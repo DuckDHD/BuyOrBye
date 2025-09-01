@@ -138,8 +138,8 @@ func (h *Handlers) makeDecision(w http.ResponseWriter, r *http.Request) {
 	}
 	input.Price = price
 
-	// Get or create session
-	sessionID := h.getOrCreateSession(r)
+	// Get or create session (NOW sets cookie)
+	sessionID := h.getOrCreateSessionID(w, r)
 
 	// Get user ID if authenticated (header-based for now)
 	var userID *uuid.UUID
@@ -186,6 +186,31 @@ func (h *Handlers) makeDecision(w http.ResponseWriter, r *http.Request) {
 		"reasons_count", len(response.Decision.Reasons),
 		"has_flip_to_yes", response.FlipToYes != nil,
 	)
+}
+
+func (h *Handlers) getOrCreateSessionID(w http.ResponseWriter, r *http.Request) uuid.UUID {
+	// Try existing cookie
+	if cookie, err := r.Cookie("session_id"); err == nil {
+		if id, err := uuid.Parse(cookie.Value); err == nil {
+			return id
+		}
+		h.reqLogger(r).Warn("invalid session_id cookie", "value", cookie.Value, "err", err)
+	}
+
+	// Create a new session id and set cookie
+	newID := uuid.New()
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    newID.String(),
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		// Secure: set to true behind HTTPS/proxy in prod:
+		Secure:  false,
+		Expires: time.Now().Add(30 * 24 * time.Hour),
+	})
+	h.reqLogger(r).Info("created new session_id", "session_id", newID)
+	return newID
 }
 
 func (h *Handlers) renderDecisionResult(w http.ResponseWriter, response *models.DecisionResponse) error {

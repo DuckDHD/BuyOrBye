@@ -43,10 +43,7 @@ func (s *DecisionService) WithLogger(l *slog.Logger) *DecisionService {
 }
 
 func (s *DecisionService) MakeDecision(ctx context.Context, input models.DecisionInput, userID *uuid.UUID, sessionID uuid.UUID) (*models.DecisionResponse, error) {
-	l := s.reqLogger(ctx).With(
-		"user_id", userID,
-		"session_id", sessionID,
-	)
+	l := s.reqLogger(ctx).With("user_id", userID, "session_id", sessionID)
 	l.Info("make_decision.start",
 		"item", safeTrunc(input.ItemName, 80),
 		"currency", input.Currency,
@@ -54,6 +51,12 @@ func (s *DecisionService) MakeDecision(ctx context.Context, input models.Decisio
 		"price", input.Price,
 		"desc_len", len(input.Description),
 	)
+
+	// NEW: ensure the referenced session exists in DB
+	if err := s.ensureSession(ctx, sessionID, userID); err != nil {
+		l.Error("make_decision.ensure_session.error", "err", err)
+		return nil, fmt.Errorf("failed to ensure session: %w", err)
+	}
 
 	// Get user profile if authenticated
 	var profile *models.Profile
@@ -380,6 +383,33 @@ func (s *DecisionService) getUserCreditsRemaining(ctx context.Context, userID uu
 	)
 
 	return remaining, nil
+}
+
+func (s *DecisionService) ensureSession(ctx context.Context, sessionID uuid.UUID, userID *uuid.UUID) error {
+	l := s.reqLogger(ctx).With("session_id", sessionID, "user_id", userID)
+	l.Info("db.ensure_session.start")
+
+	anon := true
+	var uid any = nil
+	if userID != nil {
+		anon = false
+		uid = *userID
+	}
+
+	start := time.Now()
+	_, err := s.db.Exec(ctx, `
+		INSERT INTO sessions (id, user_id, anon)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (id) DO NOTHING
+	`, sessionID, uid, anon)
+	dur := time.Since(start)
+
+	if err != nil {
+		l.Error("db.ensure_session.error", "err", err, "duration_ms", dur.Milliseconds())
+		return err
+	}
+	l.Info("db.ensure_session.ok", "duration_ms", dur.Milliseconds())
+	return nil
 }
 
 /* ===========================
