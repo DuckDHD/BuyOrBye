@@ -34,7 +34,6 @@ func NewDecisionService(db *pgxpool.Pool, cfg *config.Config) *DecisionService {
 	}
 }
 
-// Optional helper if you want to inject a custom logger later.
 func (s *DecisionService) WithLogger(l *slog.Logger) *DecisionService {
 	if l != nil {
 		s.logger = l
@@ -42,6 +41,603 @@ func (s *DecisionService) WithLogger(l *slog.Logger) *DecisionService {
 	return s
 }
 
+// StartValidation begins the multi-step validation process
+func (s *DecisionService) StartValidation(ctx context.Context, input models.DecisionInput, userID *uuid.UUID, sessionID uuid.UUID) (*ValidationResponse, error) {
+	l := s.reqLogger(ctx).With("user_id", userID, "session_id", sessionID)
+	l.Info("validation.start", "item", safeTrunc(input.ItemName, 80))
+
+	// Create new validation state
+	state := &ValidationState{
+		ID:            uuid.New(),
+		SessionID:     sessionID,
+		UserID:        userID,
+		CurrentStep:   StepFinancialProfile,
+		OriginalInput: &input,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+
+	// Save validation state
+	if err := s.saveValidationState(ctx, state); err != nil {
+		l.Error("validation.save_state.error", "err", err)
+		return nil, fmt.Errorf("failed to save validation state: %w", err)
+	}
+
+	return &ValidationResponse{
+		State:    state,
+		NextStep: StepFinancialProfile,
+		Questions: []string{
+			"What is your monthly income after taxes?",
+			"What are your fixed monthly charges (rent, utilities, insurance)?",
+			"What is your total monthly loan payments?",
+		},
+		Complete: false,
+	}, nil
+}
+
+// UpdateValidation processes a validation step
+func (s *DecisionService) UpdateValidation(ctx context.Context, validationID uuid.UUID, stepData map[string]interface{}) (*ValidationResponse, error) {
+	l := s.reqLogger(ctx).With("validation_id", validationID)
+	l.Info("validation.update.start")
+
+	// Get current validation state
+	state, err := s.getValidationState(ctx, validationID)
+	if err != nil {
+		l.Error("validation.get_state.error", "err", err)
+		return nil, fmt.Errorf("failed to get validation state: %w", err)
+	}
+
+	// Process current step
+	nextStep, questions, err := s.processValidationStep(ctx, state, stepData)
+	if err != nil {
+		l.Error("validation.process_step.error", "err", err, "current_step", state.CurrentStep)
+		return nil, fmt.Errorf("failed to process validation step: %w", err)
+	}
+
+	// Update state
+	state.CurrentStep = nextStep
+	state.UpdatedAt = time.Now()
+
+	// Save updated state
+	if err := s.saveValidationState(ctx, state); err != nil {
+		l.Error("validation.save_updated_state.error", "err", err)
+		return nil, fmt.Errorf("failed to save updated validation state: %w", err)
+	}
+
+	response := &ValidationResponse{
+		State:    state,
+		NextStep: nextStep,
+		Questions: questions,
+		Complete: nextStep == StepComplete,
+	}
+
+	// If validation is complete, generate final decision
+	if nextStep == StepComplete {
+		decision, err := s.makeEnhancedDecision(ctx, state)
+		if err != nil {
+			l.Error("validation.make_decision.error", "err", err)
+			return nil, fmt.Errorf("failed to make enhanced decision: %w", err)
+		}
+		response.Decision = decision
+	}
+
+	return response, nil
+}
+
+// processValidationStep handles the logic for each validation step
+func (s *DecisionService) processValidationStep(ctx context.Context, state *ValidationState, stepData map[string]interface{}) (ValidationStep, []string, error) {
+	switch state.CurrentStep {
+	case StepFinancialProfile:
+		return s.processFinancialProfile(state, stepData)
+	case StepDebtAssessment:
+		return s.processDebtAssessment(state, stepData)
+	case StepHealthContext:
+		return s.processHealthContext(state, stepData)
+	case StepTransportation:
+		return s.processTransportation(state, stepData)
+	case StepPurchaseReason:
+		return s.processPurchaseReason(state, stepData)
+	default:
+		return StepComplete, nil, nil
+	}
+}
+
+func (s *DecisionService) processFinancialProfile(state *ValidationState, data map[string]interface{}) (ValidationStep, []string, error) {
+	financial := &FinancialValidation{}
+	
+	if income, ok := data["income"].(float64); ok {
+		financial.Income = income
+	}
+	if charges, ok := data["fixed_charges"].(float64); ok {
+		financial.FixedCharges = charges
+	}
+	if loans, ok := data["monthly_loans"].(float64); ok {
+		financial.MonthlyLoans = loans
+	}
+	if confirmed, ok := data["confirmed"].(bool); ok {
+		financial.Confirmed = confirmed
+	}
+
+	state.FinancialValidation = financial
+
+	if !financial.Confirmed {
+		return StepFinancialProfile, []string{
+			"Please confirm your financial information is accurate.",
+		}, nil
+	}
+
+	return StepDebtAssessment, []string{
+		"Please provide details about each of your loans:",
+		"- Type of loan (mortgage, car, personal, etc.)",
+		"- Monthly payment amount",
+		"- Remaining balance",
+		"- Interest rate (if known)",
+	}, nil
+}
+
+func (s *DecisionService) processDebtAssessment(state *ValidationState, data map[string]interface{}) (ValidationStep, []string, error) {
+	assessment := &DebtAssessment{}
+	
+	if loansData, ok := data["loans"].([]interface{}); ok {
+		for _, loanData := range loansData {
+			if loanMap, ok := loanData.(map[string]interface{}); ok {
+				loan := LoanInfo{}
+				if lType, ok := loanMap["type"].(string); ok {
+					loan.Type = lType
+				}
+				if payment, ok := loanMap["monthly_payment"].(float64); ok {
+					loan.MonthlyPayment = payment
+				}
+				if remaining, ok := loanMap["remaining_amount"].(float64); ok {
+					loan.RemainingAmount = remaining
+				}
+				if rate, ok := loanMap["interest_rate"].(float64); ok {
+					loan.InterestRate = rate
+				}
+				assessment.Loans = append(assessment.Loans, loan)
+			}
+		}
+	}
+	
+	if confirmed, ok := data["confirmed"].(bool); ok {
+		assessment.Confirmed = confirmed
+	}
+
+	state.DebtAssessment = assessment
+
+	if !assessment.Confirmed {
+		return StepDebtAssessment, []string{
+			"Please confirm your debt information is complete and accurate.",
+		}, nil
+	}
+
+	return StepHealthContext, []string{
+		"Let's understand your household's health context:",
+		"- How many people in your household?",
+		"- Any special medical needs or ongoing conditions?",
+		"- Approximate monthly healthcare costs?",
+	}, nil
+}
+
+func (s *DecisionService) processHealthContext(state *ValidationState, data map[string]interface{}) (ValidationStep, []string, error) {
+	health := &HealthContext{}
+	
+	if size, ok := data["household_size"].(float64); ok {
+		health.HouseholdSize = int(size)
+	}
+	if needs, ok := data["special_needs"].(bool); ok {
+		health.SpecialNeeds = needs
+	}
+	if conditions, ok := data["medical_conditions"].([]interface{}); ok {
+		for _, condition := range conditions {
+			if condStr, ok := condition.(string); ok {
+				health.MedicalConditions = append(health.MedicalConditions, condStr)
+			}
+		}
+	}
+	if costs, ok := data["monthly_health_costs"].(float64); ok {
+		health.MonthlyHealthCosts = costs
+	}
+	if confirmed, ok := data["confirmed"].(bool); ok {
+		health.Confirmed = confirmed
+	}
+
+	state.HealthContext = health
+
+	if !health.Confirmed {
+		return StepHealthContext, []string{
+			"Please confirm your household health information.",
+		}, nil
+	}
+
+	return StepTransportation, []string{
+		"Tell us about your transportation:",
+		"- What's your main mode of transport?",
+		"- If you have a car: brand, model, year, kilometers, engine type?",
+		"- What's the general condition of your vehicle?",
+		"- Any maintenance needed and estimated cost?",
+		"- Monthly transportation costs?",
+	}, nil
+}
+
+func (s *DecisionService) processTransportation(state *ValidationState, data map[string]interface{}) (ValidationStep, []string, error) {
+	transport := &TransportationInfo{}
+	
+	if mainTransport, ok := data["main_transport"].(string); ok {
+		transport.MainTransport = mainTransport
+	}
+	
+	if vehicleData, ok := data["vehicle_info"].(map[string]interface{}); ok {
+		vehicle := &VehicleInfo{}
+		if brand, ok := vehicleData["brand"].(string); ok {
+			vehicle.Brand = brand
+		}
+		if model, ok := vehicleData["model"].(string); ok {
+			vehicle.Model = model
+		}
+		if year, ok := vehicleData["year"].(float64); ok {
+			vehicle.Year = int(year)
+		}
+		if km, ok := vehicleData["kilometers"].(float64); ok {
+			vehicle.Kilometers = int(km)
+		}
+		if engine, ok := vehicleData["engine"].(string); ok {
+			vehicle.Engine = engine
+		}
+		if state, ok := vehicleData["general_state"].(string); ok {
+			vehicle.GeneralState = state
+		}
+		if needed, ok := vehicleData["maintenance_needed"].(bool); ok {
+			vehicle.MaintenanceNeeded = needed
+		}
+		if cost, ok := vehicleData["estimated_maintenance_cost"].(float64); ok {
+			vehicle.EstimatedMaintenanceCost = cost
+		}
+		transport.VehicleInfo = vehicle
+	}
+	
+	if costs, ok := data["monthly_transport_costs"].(float64); ok {
+		transport.MonthlyTransportCosts = costs
+	}
+	if confirmed, ok := data["confirmed"].(bool); ok {
+		transport.Confirmed = confirmed
+	}
+
+	state.TransportationInfo = transport
+
+	if !transport.Confirmed {
+		return StepTransportation, []string{
+			"Please confirm your transportation information.",
+		}, nil
+	}
+
+	return StepPurchaseReason, []string{
+		"Finally, let's understand why you want to make this purchase:",
+		"- What practical need does this fulfill?",
+		"- Is there an emotional reason for wanting this?",
+		"- How urgent is this purchase?",
+		"- What alternatives have you considered?",
+	}, nil
+}
+
+func (s *DecisionService) processPurchaseReason(state *ValidationState, data map[string]interface{}) (ValidationStep, []string, error) {
+	reason := &PurchaseReason{}
+	
+	if practical, ok := data["practical_need"].(string); ok {
+		reason.PracticalNeed = practical
+	}
+	if emotional, ok := data["emotional_want"].(string); ok {
+		reason.EmotionalWant = emotional
+	}
+	if urgency, ok := data["urgency"].(string); ok {
+		reason.Urgency = urgency
+	}
+	if alternatives, ok := data["alternatives"].(string); ok {
+		reason.Alternatives = alternatives
+	}
+	if confirmed, ok := data["confirmed"].(bool); ok {
+		reason.Confirmed = confirmed
+	}
+
+	state.PurchaseReason = reason
+
+	if !reason.Confirmed {
+		return StepPurchaseReason, []string{
+			"Please confirm your purchase reasoning information.",
+		}, nil
+	}
+
+	return StepComplete, nil, nil
+}
+
+// makeEnhancedDecision creates a comprehensive decision using all validation data
+func (s *DecisionService) makeEnhancedDecision(ctx context.Context, state *ValidationState) (*models.DecisionResponse, error) {
+	l := s.reqLogger(ctx).With("validation_id", state.ID)
+	l.Info("enhanced_decision.start")
+
+	if state.OriginalInput == nil {
+		return nil, fmt.Errorf("original input missing from validation state")
+	}
+
+	// Convert currency if needed
+	costInUSD, err := s.fx.ConvertToUSD(state.OriginalInput.Price, state.OriginalInput.Currency)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert currency: %w", err)
+	}
+
+	// Generate comprehensive prompt for AI
+	prompt := s.buildComprehensivePrompt(state, costInUSD)
+	
+	// Get AI analysis
+	startAI := time.Now()
+	aiAnalysis, err := s.ai.AnalyzeComprehensiveDecision(ctx, prompt)
+	durAI := time.Since(startAI)
+	
+	if err != nil {
+		l.Warn("enhanced_decision.ai_analysis.error", "err", err, "duration_ms", durAI.Milliseconds())
+		// Fallback to basic decision if AI fails
+		return s.makeBasicDecision(ctx, *state.OriginalInput, state.UserID, state.SessionID)
+	}
+
+	l.Info("enhanced_decision.ai_analysis.ok", "duration_ms", durAI.Milliseconds())
+
+	// Parse AI response and create decision
+	verdict, score, reasons := s.parseAIAnalysis(aiAnalysis)
+
+	// Create and save decision
+	decision := &models.Decision{
+		ID:        uuid.New(),
+		UserID:    state.UserID,
+		SessionID: state.SessionID,
+		Input:     *state.OriginalInput,
+		Verdict:   verdict,
+		Score:     score,
+		Reasons:   models.ReasonsJSON(reasons),
+		Cost:      state.OriginalInput.Price,
+		Currency:  state.OriginalInput.Currency,
+		CreatedAt: time.Now(),
+	}
+
+	if err := s.saveDecision(ctx, decision); err != nil {
+		return nil, fmt.Errorf("failed to save enhanced decision: %w", err)
+	}
+
+	// Generate flip-to-yes suggestion
+	flipToYes := s.generateEnhancedFlipToYes(state, verdict, reasons)
+
+	// Get remaining credits
+	creditsLeft := 0
+	if state.UserID != nil {
+		if c, err := s.getUserCreditsRemaining(ctx, *state.UserID); err == nil {
+			creditsLeft = c
+		}
+	}
+
+	return &models.DecisionResponse{
+		Decision:    decision,
+		FlipToYes:   flipToYes,
+		CreditsLeft: creditsLeft,
+	}, nil
+}
+
+func (s *DecisionService) buildComprehensivePrompt(state *ValidationState, costInUSD float64) string {
+	prompt := fmt.Sprintf(`
+Analyze this purchase decision comprehensively:
+
+PURCHASE DETAILS:
+- Item: %s
+- Price: %.2f %s (%.2f USD)
+- Description: %s
+- Marked as necessity: %t
+
+FINANCIAL PROFILE:`, 
+		state.OriginalInput.ItemName,
+		state.OriginalInput.Price,
+		state.OriginalInput.Currency,
+		costInUSD,
+		state.OriginalInput.Description,
+		state.OriginalInput.IsNecessity)
+
+	if state.FinancialValidation != nil {
+		prompt += fmt.Sprintf(`
+- Monthly Income: %.2f
+- Fixed Charges: %.2f
+- Monthly Loans: %.2f
+- Net Available: %.2f`, 
+			state.FinancialValidation.Income,
+			state.FinancialValidation.FixedCharges,
+			state.FinancialValidation.MonthlyLoans,
+			state.FinancialValidation.Income - state.FinancialValidation.FixedCharges - state.FinancialValidation.MonthlyLoans)
+	}
+
+	if state.DebtAssessment != nil && len(state.DebtAssessment.Loans) > 0 {
+		prompt += "\n\nDEBT BREAKDOWN:"
+		for _, loan := range state.DebtAssessment.Loans {
+			prompt += fmt.Sprintf("\n- %s: %.2f/month, %.2f remaining", loan.Type, loan.MonthlyPayment, loan.RemainingAmount)
+		}
+	}
+
+	if state.HealthContext != nil {
+		prompt += fmt.Sprintf(`
+
+HOUSEHOLD CONTEXT:
+- Household Size: %d
+- Special Health Needs: %t
+- Monthly Health Costs: %.2f`, 
+			state.HealthContext.HouseholdSize,
+			state.HealthContext.SpecialNeeds,
+			state.HealthContext.MonthlyHealthCosts)
+		
+		if len(state.HealthContext.MedicalConditions) > 0 {
+			prompt += "\n- Medical Conditions: " + fmt.Sprintf("%v", state.HealthContext.MedicalConditions)
+		}
+	}
+
+	if state.TransportationInfo != nil {
+		prompt += fmt.Sprintf("\n\nTRANSPORTATION:\n- Main Transport: %s\n- Monthly Transport Costs: %.2f", 
+			state.TransportationInfo.MainTransport,
+			state.TransportationInfo.MonthlyTransportCosts)
+		
+		if state.TransportationInfo.VehicleInfo != nil {
+			v := state.TransportationInfo.VehicleInfo
+			prompt += fmt.Sprintf(`
+- Vehicle: %s %s (%d)
+- Kilometers: %d
+- Engine: %s
+- Condition: %s
+- Maintenance Needed: %t`, 
+				v.Brand, v.Model, v.Year, v.Kilometers, v.Engine, v.GeneralState, v.MaintenanceNeeded)
+			
+			if v.MaintenanceNeeded {
+				prompt += fmt.Sprintf("\n- Estimated Maintenance Cost: %.2f", v.EstimatedMaintenanceCost)
+			}
+		}
+	}
+
+	if state.PurchaseReason != nil {
+		prompt += fmt.Sprintf(`
+
+PURCHASE REASONING:
+- Practical Need: %s
+- Emotional Want: %s
+- Urgency: %s
+- Alternatives Considered: %s`, 
+			state.PurchaseReason.PracticalNeed,
+			state.PurchaseReason.EmotionalWant,
+			state.PurchaseReason.Urgency,
+			state.PurchaseReason.Alternatives)
+	}
+
+	prompt += `
+
+Please analyze this purchase and provide:
+1. A verdict (YES/NO)
+2. A confidence score (0.0-1.0)
+3. Detailed reasoning considering financial health, household needs, transportation requirements, and purchase motivation
+4. Specific recommendations or alternatives if applicable
+
+Format your response as:
+VERDICT: [YES/NO]
+SCORE: [0.0-1.0]
+REASONING: [Detailed analysis]`
+
+	return prompt
+}
+
+func (s *DecisionService) parseAIAnalysis(analysis string) (models.DecisionVerdict, float64, []string) {
+	// This would parse the AI response
+	// For now, implementing basic parsing logic
+	// You should enhance this based on your AI response format
+	
+	if analysis == "" {
+		return models.VerdictNo, 0.3, []string{"AI analysis unavailable, defaulting to conservative recommendation"}
+	}
+
+	// Basic parsing - enhance this based on your AI's response format
+	verdict := models.VerdictNo
+	score := 0.5
+	reasons := []string{analysis} // Simplified - you'd want to parse this properly
+
+	return verdict, score, reasons
+}
+
+func (s *DecisionService) generateEnhancedFlipToYes(state *ValidationState, verdict models.DecisionVerdict, reasons []string) *string {
+	if verdict == models.VerdictYes {
+		return nil
+	}
+
+	// Generate contextual suggestions based on validation data
+	suggestions := []string{}
+	
+	if state.DebtAssessment != nil && len(state.DebtAssessment.Loans) > 0 {
+		suggestions = append(suggestions, "Consider paying down high-interest debt first")
+	}
+	
+	if state.TransportationInfo != nil && state.TransportationInfo.VehicleInfo != nil && state.TransportationInfo.VehicleInfo.MaintenanceNeeded {
+		suggestions = append(suggestions, fmt.Sprintf("Address vehicle maintenance (%.0f) before new purchases", state.TransportationInfo.VehicleInfo.EstimatedMaintenanceCost))
+	}
+	
+	if state.HealthContext != nil && state.HealthContext.SpecialNeeds {
+		suggestions = append(suggestions, "Build health emergency fund before discretionary purchases")
+	}
+	
+	if state.PurchaseReason != nil && state.PurchaseReason.Urgency == "can_wait" {
+		suggestions = append(suggestions, "Wait 30 days and save specifically for this item")
+	}
+
+	if len(suggestions) == 0 {
+		suggestion := fmt.Sprintf("Save for 2-3 months to build a buffer before purchasing")
+		return &suggestion
+	}
+
+	suggestion := suggestions[0]
+	return &suggestion
+}
+
+// Database operations for validation state
+func (s *DecisionService) saveValidationState(ctx context.Context, state *ValidationState) error {
+	l := s.reqLogger(ctx).With("validation_id", state.ID)
+	
+	stateJSON, err := json.Marshal(state)
+	if err != nil {
+		return fmt.Errorf("failed to marshal validation state: %w", err)
+	}
+
+	query := `
+		INSERT INTO validation_states (id, session_id, user_id, current_step, state_json, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (id) DO UPDATE SET
+			current_step = EXCLUDED.current_step,
+			state_json = EXCLUDED.state_json,
+			updated_at = EXCLUDED.updated_at
+	`
+
+	_, err = s.db.Exec(ctx, query,
+		state.ID,
+		state.SessionID,
+		state.UserID,
+		state.CurrentStep,
+		stateJSON,
+		state.CreatedAt,
+		state.UpdatedAt,
+	)
+
+	if err != nil {
+		l.Error("db.save_validation_state.error", "err", err)
+		return err
+	}
+
+	l.Info("db.save_validation_state.ok")
+	return nil
+}
+
+func (s *DecisionService) getValidationState(ctx context.Context, validationID uuid.UUID) (*ValidationState, error) {
+	l := s.reqLogger(ctx).With("validation_id", validationID)
+
+	query := `SELECT state_json FROM validation_states WHERE id = $1`
+	
+	var stateJSON []byte
+	err := s.db.QueryRow(ctx, query, validationID).Scan(&stateJSON)
+	if err != nil {
+		l.Error("db.get_validation_state.error", "err", err)
+		return nil, err
+	}
+
+	var state ValidationState
+	if err := json.Unmarshal(stateJSON, &state); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal validation state: %w", err)
+	}
+
+	l.Info("db.get_validation_state.ok")
+	return &state, nil
+}
+
+// Fallback to existing basic decision logic
+func (s *DecisionService) makeBasicDecision(ctx context.Context, input models.DecisionInput, userID *uuid.UUID, sessionID uuid.UUID) (*models.DecisionResponse, error) {
+	return s.MakeDecision(ctx, input, userID, sessionID)
+}
+
+// Keep all existing methods for backward compatibility
 func (s *DecisionService) MakeDecision(ctx context.Context, input models.DecisionInput, userID *uuid.UUID, sessionID uuid.UUID) (*models.DecisionResponse, error) {
 	l := s.reqLogger(ctx).With("user_id", userID, "session_id", sessionID)
 	l.Info("make_decision.start",
@@ -76,6 +672,7 @@ func (s *DecisionService) MakeDecision(ctx context.Context, input models.Decisio
 	startFX := time.Now()
 	costInUSD, err := s.fx.ConvertToUSD(input.Price, input.Currency)
 	durFX := time.Since(startFX)
+	if err != nil {
 	if err != nil {
 		l.Error("make_decision.fx_convert.error", "err", err, "from_amount", input.Price, "from_currency", input.Currency, "duration_ms", durFX.Milliseconds())
 		return nil, fmt.Errorf("failed to convert currency: %w", err)
@@ -140,7 +737,7 @@ func (s *DecisionService) MakeDecision(ctx context.Context, input models.Decisio
 		l.Info("make_decision.flip_to_yes", "suggestion_len", len(*flipToYes))
 	}
 
-	// Check remaining credits (best-effort, don’t block decision)
+	// Check remaining credits (best-effort, don't block decision)
 	creditsLeft := 0
 	if userID != nil {
 		startCredits := time.Now()
@@ -228,6 +825,7 @@ func (s *DecisionService) calculateDecision(input models.DecisionInput, profile 
 
 	return models.VerdictNo, score, append(reasons, "Consider waiting or finding alternatives")
 }
+
 
 func (s *DecisionService) generateFlipToYes(input models.DecisionInput, verdict models.DecisionVerdict, reasons []string) *string {
 	if verdict == models.VerdictYes {
