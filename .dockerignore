@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Go
+*.test
+*.out
+coverage.html
+bin/
+
+# Development
+.env
+.env.local
+.air.toml
+tmp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
