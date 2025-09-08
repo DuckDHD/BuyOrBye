@@ -62,9 +62,10 @@ func TestPasswordService_HashPassword_TableDriven(t *testing.T) {
 			errorMsg:    "password cannot be empty",
 		},
 		{
-			name:        "Very long password",
-			password:    string(make([]byte, 100)),
-			expectError: false,
+			name:        "Very long password exceeds bcrypt limit",
+			password:    "VeryLongPasswordThatExceeds72CharactersWhichIsTheBcryptLimitAndShouldReturnAnError123456789!@#$%^&*()",
+			expectError: true,
+			errorMsg:    "password length exceeds 72 bytes",
 		},
 		{
 			name:        "Password with special characters",
