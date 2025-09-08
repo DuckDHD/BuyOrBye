@@ -18,6 +18,8 @@
 go.work
 tmp/
 
+tailwindcss-macos-arm64
+
 # IDE specific files
 .vscode
 .idea
