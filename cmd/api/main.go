@@ -38,16 +38,22 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 }
 
 func main() {
+	// Initialize the authentication server
+	authServer, err := server.NewAuthServer()
+	if err != nil {
+		log.Fatalf("Failed to initialize authentication server: %v", err)
+	}
 
-	server := server.NewServer()
+	log.Printf("Starting BuyOrBye authentication server on port %s", authServer.Addr)
 
 	// Create a done channel to signal when the shutdown is complete
 	done := make(chan bool, 1)
 
 	// Run graceful shutdown in a separate goroutine
-	go gracefulShutdown(server, done)
+	go gracefulShutdown(authServer, done)
 
-	err := server.ListenAndServe()
+	// Start the server
+	err = authServer.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		panic(fmt.Sprintf("http server error: %s", err))
 	}
