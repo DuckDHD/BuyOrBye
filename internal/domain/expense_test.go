@@ -376,7 +376,7 @@ func TestExpense_NormalizeToMonthly_WeeklyFrequency_ReturnsMonthlyEquivalent(t *
 		expectedMonthly float64
 	}{
 		{"groceries", 150.0, 650.00}, // 150 * 52 / 12 = 650
-		{"gas", 75.50, 326.83},
+		{"gas", 75.50, 327.17},
 		{"dining_out", 100.0, 433.33},
 	}
 
