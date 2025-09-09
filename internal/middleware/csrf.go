@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"os"
 
@@ -24,7 +25,7 @@ type CSRFConfig struct {
 	Secure bool
 	// HttpOnly flag - recommended to be true for security
 	HttpOnly bool
-	// SameSite policy - recommended to be SameSiteStrictMode for security  
+	// SameSite policy - recommended to be SameSiteStrictMode for security
 	SameSite csrf.SameSiteMode
 }
 
@@ -33,9 +34,9 @@ func DefaultCSRFConfig() CSRFConfig {
 	return CSRFConfig{
 		CookieName: "_gorilla_csrf",
 		Path:       "/",
-		MaxAge:     12 * 60 * 60, // 12 hours
-		Secure:     true,         // Set to true for production HTTPS
-		HttpOnly:   true,         // Prevent XSS attacks
+		MaxAge:     12 * 60 * 60,            // 12 hours
+		Secure:     true,                    // Set to true for production HTTPS
+		HttpOnly:   true,                    // Prevent XSS attacks
 		SameSite:   csrf.SameSiteStrictMode, // Strict CSRF protection
 	}
 }
@@ -81,26 +82,33 @@ func NewCSRFMiddleware(config CSRFConfig) gin.HandlerFunc {
 		csrf.Domain(config.Domain),
 		// Custom error handler to return JSON error response
 		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if reason := csrf.FailureReason(r); reason != nil {
+				log.Printf("csrf blocked: %v", reason)
+			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte(`{
-				"error": "forbidden",
-				"message": "CSRF token invalid or missing",
-				"code": 403
-			}`))
+			_, _ = w.Write([]byte(`{"error":"forbidden","message":"CSRF token invalid or missing","code":403}`))
 		})),
 	)
 
-	// Wrap gorilla middleware to work with Gin
 	return func(c *gin.Context) {
-		// Create a handler that will continue the Gin chain if CSRF passes
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			c.Request = r
-			c.Next()
+		// Let gorilla/csrf gatekeep the chain.
+		// It will call our inner handler ONLY if the token is valid.
+		calledNext := false
+		h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calledNext = true
+			c.Request = r // r has the context gorilla/csrf injected
+			c.Next()      // continue Gin chain on success
 		})
-		
-		// Apply CSRF middleware
-		csrfMiddleware(handler).ServeHTTP(c.Writer, c.Request)
+
+		csrfMiddleware(h).ServeHTTP(c.Writer, c.Request)
+
+		if !calledNext {
+			// CSRF failed: gorilla already wrote 403. Stop Gin from running handlers.
+			c.Abort()
+			return
+		}
+		// On success, we've already run c.Next() above.
 	}
 }
 

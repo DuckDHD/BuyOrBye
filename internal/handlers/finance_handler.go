@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -715,29 +716,41 @@ func (h *FinanceHandler) buildValidationErrors(err error) map[string]interface{}
 // handleFinanceError handles finance-specific errors and maps them to appropriate HTTP responses
 func (h *FinanceHandler) handleFinanceError(c *gin.Context, err error) {
 	switch {
-	case strings.Contains(err.Error(), "not found"):
+	case errors.Is(err, domain.ErrIncomeNotFound):
 		c.JSON(http.StatusNotFound, types.NewErrorResponse(
 			http.StatusNotFound,
 			"not_found",
-			"Resource not found",
+			"Income record not found",
 		))
-	case strings.Contains(err.Error(), "does not belong to user"):
+	case errors.Is(err, domain.ErrExpenseNotFound):
+		c.JSON(http.StatusNotFound, types.NewErrorResponse(
+			http.StatusNotFound,
+			"not_found",
+			"Expense record not found",
+		))
+	case errors.Is(err, domain.ErrLoanNotFound):
+		c.JSON(http.StatusNotFound, types.NewErrorResponse(
+			http.StatusNotFound,
+			"not_found",
+			"Loan record not found",
+		))
+	case errors.Is(err, domain.ErrFinanceSummaryNotFound):
+		c.JSON(http.StatusNotFound, types.NewErrorResponse(
+			http.StatusNotFound,
+			"not_found",
+			"Financial summary not found",
+		))
+	case errors.Is(err, domain.ErrUnauthorizedAccess):
 		c.JSON(http.StatusForbidden, types.NewErrorResponse(
 			http.StatusForbidden,
 			"forbidden",
 			"Access denied: You can only access your own financial records",
 		))
-	case strings.Contains(err.Error(), "invalid") && strings.Contains(err.Error(), "data"):
+	case errors.Is(err, domain.ErrInvalidFinanceData):
 		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid financial data provided",
-		))
-	case strings.Contains(err.Error(), "validation failed"):
-		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
-			http.StatusBadRequest,
-			"validation_error",
-			"Data validation failed",
 		))
 	default:
 		// Internal server error for unexpected errors

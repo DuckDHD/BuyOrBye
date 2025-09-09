@@ -12,11 +12,11 @@ import (
 type RefreshTokenModel struct {
 	gorm.Model
 	UserID    uint      `gorm:"not null;index"`
-	Token     string    `gorm:"uniqueIndex;not null;size:255"`
+	Token     string    `gorm:"type:varchar(255);uniqueIndex;not null"`
 	ExpiresAt time.Time `gorm:"not null"`
 	IsRevoked bool      `gorm:"default:false"`
 	RevokedAt *time.Time
-	User      UserModel `gorm:"foreignKey:UserID;references:ID;onDelete:CASCADE"`
+	User      UserModel `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE;"`
 }
 
 // TableName returns the table name for GORM

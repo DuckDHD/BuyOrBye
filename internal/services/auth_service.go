@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -61,13 +62,13 @@ func NewAuthService(
 func (a *authService) Login(ctx context.Context, credentials domain.Credentials) (*domain.TokenPair, error) {
 	// Validate credentials
 	if err := credentials.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid credentials: %w", err)
+		return nil, domain.ErrInvalidCredentials
 	}
 
 	// Get user by email
 	user, err := a.userRepo.GetByEmail(ctx, credentials.Email)
 	if err != nil {
-		if err == domain.ErrUserNotFound {
+		if errors.Is(err, domain.ErrUserNotFound) {
 			return nil, domain.ErrInvalidCredentials
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
@@ -109,12 +110,12 @@ func (a *authService) Login(ctx context.Context, credentials domain.Credentials)
 func (a *authService) Register(ctx context.Context, user *domain.User, password string) (*domain.TokenPair, error) {
 	// Validate input parameters
 	if user == nil {
-		return nil, fmt.Errorf("user cannot be nil")
+		return nil, domain.ErrInvalidUserData
 	}
 
 	// Validate name
 	if user.Name == "" {
-		return nil, fmt.Errorf("invalid registration data: name is required")
+		return nil, domain.ErrInvalidUserData
 	}
 
 	// Validate credentials format
@@ -123,12 +124,12 @@ func (a *authService) Register(ctx context.Context, user *domain.User, password 
 		Password: password,
 	}
 	if err := credentials.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid registration data: %w", err)
+		return nil, domain.ErrInvalidUserData
 	}
 
 	// Check if user already exists
 	existingUser, err := a.userRepo.GetByEmail(ctx, user.Email)
-	if err != nil && err != domain.ErrUserNotFound {
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
 		return nil, fmt.Errorf("failed to check existing user: %w", err)
 	}
 	if existingUser != nil {
@@ -189,7 +190,7 @@ func (a *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	// Verify user still exists and is active
 	user, err := a.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		if err == domain.ErrUserNotFound {
+		if errors.Is(err, domain.ErrUserNotFound) {
 			return nil, domain.ErrInvalidToken
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)

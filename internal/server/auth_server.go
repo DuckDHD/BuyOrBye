@@ -21,21 +21,21 @@ import (
 
 // AuthServer represents the main application server with authentication
 type AuthServer struct {
-	port             int
-	gormService      *database.GormService
-	
+	port        int
+	gormService *database.GormService
+
 	// Services
-	passwordService  services.PasswordService
-	jwtService       services.JWTService
-	authService      services.AuthService
-	
+	passwordService services.PasswordService
+	jwtService      services.JWTService
+	authService     services.AuthService
+
 	// Handlers
-	authHandler      *handlers.AuthHandler
-	
+	authHandler *handlers.AuthHandler
+
 	// Middleware
-	authMiddleware   *middleware.JWTAuthMiddleware
-	loginRateLimit   *middleware.InMemoryRateLimiter
-	apiRateLimit     *middleware.InMemoryRateLimiter
+	authMiddleware *middleware.JWTAuthMiddleware
+	loginRateLimit *middleware.InMemoryRateLimiter
+	apiRateLimit   *middleware.InMemoryRateLimiter
 }
 
 // NewAuthServer creates a new server instance with full authentication setup
@@ -110,7 +110,7 @@ func (s *AuthServer) RegisterRoutes() http.Handler {
 
 	// CORS middleware - allow credentials for authentication
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"}, 
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: true,
@@ -137,7 +137,7 @@ func (s *AuthServer) RegisterRoutes() http.Handler {
 		{
 			// Apply CSRF protection to state-changing operations
 			public.Use(csrfMiddleware)
-			
+
 			// Apply rate limiting specifically to login endpoint
 			public.POST("/login", s.loginRateLimit.RateLimit(), s.authHandler.Login)
 			public.POST("/register", s.authHandler.Register)
@@ -163,7 +163,7 @@ func (s *AuthServer) RegisterRoutes() http.Handler {
 		// Apply authentication middleware to all API routes
 		apiRoutes.Use(s.authMiddleware.RequireAuth())
 		apiRoutes.Use(csrfMiddleware)
-		
+
 		// Example protected API endpoint
 		apiRoutes.GET("/protected", s.protectedHandler)
 	}
@@ -181,17 +181,17 @@ func (s *AuthServer) RegisterRoutes() http.Handler {
 // Health check handler
 func (s *AuthServer) healthHandler(c *gin.Context) {
 	health := s.gormService.Health()
-	
+
 	if health["status"] == "up" {
 		c.JSON(http.StatusOK, gin.H{
-			"status": "healthy",
-			"database": health,
+			"status":    "healthy",
+			"database":  health,
 			"timestamp": time.Now().UTC(),
 		})
 	} else {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"status": "unhealthy",
-			"database": health,
+			"status":    "unhealthy",
+			"database":  health,
 			"timestamp": time.Now().UTC(),
 		})
 	}
@@ -208,7 +208,7 @@ func (s *AuthServer) getUserProfileHandler(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	email := middleware.GetUserEmail(c)
 	claims := middleware.GetUserClaims(c)
-	
+
 	if userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "user information not found in token",
@@ -229,7 +229,7 @@ func (s *AuthServer) getUserProfileHandler(c *gin.Context) {
 // Protected API handler example
 func (s *AuthServer) protectedHandler(c *gin.Context) {
 	userID := middleware.GetUserID(c)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"message":     "This is a protected resource",
 		"user_id":     userID,
@@ -240,23 +240,23 @@ func (s *AuthServer) protectedHandler(c *gin.Context) {
 // Public info handler with optional authentication
 func (s *AuthServer) publicInfoHandler(c *gin.Context) {
 	response := gin.H{
-		"message":     "This is public information",
-		"timestamp":   time.Now().UTC(),
+		"message":       "This is public information",
+		"timestamp":     time.Now().UTC(),
 		"authenticated": middleware.IsAuthenticated(c),
 	}
-	
+
 	// Add user info if authenticated
 	if middleware.IsAuthenticated(c) {
 		response["user_id"] = middleware.GetUserID(c)
 	}
-	
+
 	c.JSON(http.StatusOK, response)
 }
 
 // Close gracefully shuts down the server and cleans up resources
 func (s *AuthServer) Close() error {
 	log.Println("Shutting down authentication server...")
-	
+
 	// Close rate limiters
 	if s.loginRateLimit != nil {
 		s.loginRateLimit.Close()
@@ -264,11 +264,11 @@ func (s *AuthServer) Close() error {
 	if s.apiRateLimit != nil {
 		s.apiRateLimit.Close()
 	}
-	
+
 	// Close database connection
 	if s.gormService != nil {
 		return s.gormService.Close()
 	}
-	
+
 	return nil
 }

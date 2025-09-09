@@ -12,9 +12,9 @@ import (
 // This struct defines the database schema and should only be used in the repository layer
 type UserModel struct {
 	gorm.Model
-	Email        string     `gorm:"uniqueIndex;not null"`
-	Name         string     `gorm:"not null"`
-	PasswordHash string     `gorm:"not null"`
+	Email        string     `gorm:"type:varchar(191);uniqueIndex;not null"`
+	Name         string     `gorm:"type:varchar(255);not null"`
+	PasswordHash string     `gorm:"type:varchar(255);not null"`
 	IsActive     bool       `gorm:"default:true"`
 	LastLoginAt  *time.Time `gorm:"default:null"`
 }
