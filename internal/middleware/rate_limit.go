@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/internal/dtos"
 )
 
 // RateLimitConfig holds configuration for rate limiting
@@ -84,7 +84,7 @@ func (rl *InMemoryRateLimiter) RateLimit() gin.HandlerFunc {
 		
 		// Check if client is rate limited
 		if rl.isRateLimited(clientKey) {
-			c.JSON(http.StatusTooManyRequests, types.NewErrorResponse(
+			c.JSON(http.StatusTooManyRequests, dtos.NewErrorResponse(
 				http.StatusTooManyRequests,
 				"rate_limit_exceeded",
 				"Too many requests. Please try again later.",

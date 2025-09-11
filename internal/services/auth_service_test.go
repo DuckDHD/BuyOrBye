@@ -8,9 +8,18 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
+	"github.com/DuckDHD/BuyOrBye/internal/logging"
 )
+
+func setupTestLogger() {
+	// Initialize logger for tests - use no-op logger to avoid output in tests
+	logger := zap.NewNop()
+	// Set the global logger for tests
+	logging.SetTestLogger(logger)
+}
 
 // MockUserRepository is a mock implementation of UserRepository
 type MockUserRepository struct {
@@ -163,6 +172,7 @@ func setupAuthServiceMocks() (*MockUserRepository, *MockTokenRepository, *MockPa
 // Test Login with valid credentials returns tokens
 func TestAuthService_Login_ValidCredentials_ReturnsTokens(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -196,6 +206,7 @@ func TestAuthService_Login_ValidCredentials_ReturnsTokens(t *testing.T) {
 // Test Login with invalid email returns error
 func TestAuthService_Login_InvalidEmail_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -223,6 +234,7 @@ func TestAuthService_Login_InvalidEmail_ReturnsError(t *testing.T) {
 // Test Login with wrong password returns error
 func TestAuthService_Login_WrongPassword_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -253,6 +265,7 @@ func TestAuthService_Login_WrongPassword_ReturnsError(t *testing.T) {
 // Test Login with inactive account returns error
 func TestAuthService_Login_InactiveAccount_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -283,6 +296,7 @@ func TestAuthService_Login_InactiveAccount_ReturnsError(t *testing.T) {
 // Test Register creates user and returns tokens
 func TestAuthService_Register_ValidData_CreatesUserAndReturnsTokens(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -320,6 +334,7 @@ func TestAuthService_Register_ValidData_CreatesUserAndReturnsTokens(t *testing.T
 // Test Register with duplicate email returns error
 func TestAuthService_Register_DuplicateEmail_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -352,6 +367,7 @@ func TestAuthService_Register_DuplicateEmail_ReturnsError(t *testing.T) {
 // Test Register with password hashing failure
 func TestAuthService_Register_PasswordHashingFails_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -381,6 +397,7 @@ func TestAuthService_Register_PasswordHashingFails_ReturnsError(t *testing.T) {
 // Test RefreshToken with valid token returns new pair
 func TestAuthService_RefreshToken_ValidToken_ReturnsNewTokenPair(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -411,6 +428,7 @@ func TestAuthService_RefreshToken_ValidToken_ReturnsNewTokenPair(t *testing.T) {
 // Test RefreshToken with invalid token returns error
 func TestAuthService_RefreshToken_InvalidToken_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -434,6 +452,7 @@ func TestAuthService_RefreshToken_InvalidToken_ReturnsError(t *testing.T) {
 // Test RefreshToken with expired token returns error
 func TestAuthService_RefreshToken_ExpiredToken_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -456,6 +475,7 @@ func TestAuthService_RefreshToken_ExpiredToken_ReturnsError(t *testing.T) {
 // Test RefreshToken with revoked token returns error
 func TestAuthService_RefreshToken_RevokedToken_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -481,6 +501,7 @@ func TestAuthService_RefreshToken_RevokedToken_ReturnsError(t *testing.T) {
 // Test Logout revokes tokens successfully
 func TestAuthService_Logout_ValidToken_RevokesTokensSuccessfully(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -503,6 +524,7 @@ func TestAuthService_Logout_ValidToken_RevokesTokensSuccessfully(t *testing.T) {
 // Test Logout with invalid token handles gracefully
 func TestAuthService_Logout_InvalidToken_HandlesGracefully(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -566,6 +588,7 @@ func TestAuthService_Login_ValidationScenarios(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
+			setupTestLogger()
 			userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 			service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 			ctx := context.Background()
@@ -643,6 +666,7 @@ func TestAuthService_Register_ValidationScenarios(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
+			setupTestLogger()
 			userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 			service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 			ctx := context.Background()
@@ -669,6 +693,7 @@ func TestAuthService_Register_ValidationScenarios(t *testing.T) {
 // Test business logic edge cases
 func TestAuthService_Login_DatabaseError_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -693,6 +718,7 @@ func TestAuthService_Login_DatabaseError_ReturnsError(t *testing.T) {
 // Test concurrent login attempts
 func TestAuthService_Login_ConcurrentAttempts_HandledCorrectly(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -738,6 +764,7 @@ func TestAuthService_Login_ConcurrentAttempts_HandledCorrectly(t *testing.T) {
 // Test Register with user creation failure
 func TestAuthService_Register_UserCreationFails_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -770,6 +797,7 @@ func TestAuthService_Register_UserCreationFails_ReturnsError(t *testing.T) {
 // Test Register with token generation failure
 func TestAuthService_Register_TokenGenerationFails_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -806,6 +834,7 @@ func TestAuthService_Register_TokenGenerationFails_ReturnsError(t *testing.T) {
 // Test Register with save refresh token failure
 func TestAuthService_Register_SaveRefreshTokenFails_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -844,6 +873,7 @@ func TestAuthService_Register_SaveRefreshTokenFails_ReturnsError(t *testing.T) {
 // Test Login with JWT generation failure
 func TestAuthService_Login_JWTGenerationFails_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -875,6 +905,7 @@ func TestAuthService_Login_JWTGenerationFails_ReturnsError(t *testing.T) {
 // Test Login with save refresh token failure
 func TestAuthService_Login_SaveRefreshTokenFails_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -908,6 +939,7 @@ func TestAuthService_Login_SaveRefreshTokenFails_ReturnsError(t *testing.T) {
 // Test RefreshToken with user not found
 func TestAuthService_RefreshToken_UserNotFound_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -934,6 +966,7 @@ func TestAuthService_RefreshToken_UserNotFound_ReturnsError(t *testing.T) {
 // Test RefreshToken with database error on user lookup
 func TestAuthService_RefreshToken_UserLookupFails_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -960,6 +993,7 @@ func TestAuthService_RefreshToken_UserLookupFails_ReturnsError(t *testing.T) {
 // Test RefreshToken with inactive user
 func TestAuthService_RefreshToken_InactiveUser_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -988,6 +1022,7 @@ func TestAuthService_RefreshToken_InactiveUser_ReturnsError(t *testing.T) {
 // Test RefreshToken with revoke old token failure
 func TestAuthService_RefreshToken_RevokeOldTokenFails_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -1016,6 +1051,7 @@ func TestAuthService_RefreshToken_RevokeOldTokenFails_ReturnsError(t *testing.T)
 // Test RefreshToken with new token generation failure
 func TestAuthService_RefreshToken_NewTokenGenerationFails_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -1045,6 +1081,7 @@ func TestAuthService_RefreshToken_NewTokenGenerationFails_ReturnsError(t *testin
 // Test RefreshToken with save new token failure
 func TestAuthService_RefreshToken_SaveNewTokenFails_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -1076,6 +1113,7 @@ func TestAuthService_RefreshToken_SaveNewTokenFails_ReturnsError(t *testing.T) {
 // Test Logout with revoke token failure
 func TestAuthService_Logout_RevokeTokenFails_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -1099,6 +1137,7 @@ func TestAuthService_Logout_RevokeTokenFails_ReturnsError(t *testing.T) {
 // Test Register with nil user
 func TestAuthService_Register_NilUser_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -1115,6 +1154,7 @@ func TestAuthService_Register_NilUser_ReturnsError(t *testing.T) {
 // Test RefreshToken with empty token
 func TestAuthService_RefreshToken_EmptyToken_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()
@@ -1131,6 +1171,7 @@ func TestAuthService_RefreshToken_EmptyToken_ReturnsError(t *testing.T) {
 // Test Logout with empty token
 func TestAuthService_Logout_EmptyToken_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	userRepo, tokenRepo, passwordService, jwtService := setupAuthServiceMocks()
 	service := NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	ctx := context.Background()

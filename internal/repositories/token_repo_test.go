@@ -6,11 +6,20 @@ import (
 	"time"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
+	"github.com/DuckDHD/BuyOrBye/internal/logging"
 	"github.com/DuckDHD/BuyOrBye/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
+
+func setupTestLogger() {
+	// Initialize logger for tests - use no-op logger to avoid output in tests
+	logger := zap.NewNop()
+	// Set the global logger for tests
+	logging.SetTestLogger(logger)
+}
 
 // createTestUserInDB creates a test user in the database and returns the user
 func createTestUserInDB(t *testing.T, db *gorm.DB) *domain.User {
@@ -28,6 +37,7 @@ func createTestUserInDB(t *testing.T, db *gorm.DB) *domain.User {
 
 func TestTokenRepository_SaveRefreshToken_Success(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -54,6 +64,7 @@ func TestTokenRepository_SaveRefreshToken_Success(t *testing.T) {
 
 func TestTokenRepository_SaveRefreshToken_ReplaceExisting_Success(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -87,6 +98,7 @@ func TestTokenRepository_SaveRefreshToken_ReplaceExisting_Success(t *testing.T) 
 
 func TestTokenRepository_SaveRefreshToken_InvalidUserID_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -104,6 +116,7 @@ func TestTokenRepository_SaveRefreshToken_InvalidUserID_ReturnsError(t *testing.
 
 func TestTokenRepository_GetRefreshToken_Success(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -125,6 +138,7 @@ func TestTokenRepository_GetRefreshToken_Success(t *testing.T) {
 
 func TestTokenRepository_GetRefreshToken_NotFound_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -140,6 +154,7 @@ func TestTokenRepository_GetRefreshToken_NotFound_ReturnsError(t *testing.T) {
 
 func TestTokenRepository_GetRefreshToken_ExpiredToken_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -162,6 +177,7 @@ func TestTokenRepository_GetRefreshToken_ExpiredToken_ReturnsError(t *testing.T)
 
 func TestTokenRepository_GetRefreshToken_RevokedToken_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -188,6 +204,7 @@ func TestTokenRepository_GetRefreshToken_RevokedToken_ReturnsError(t *testing.T)
 
 func TestTokenRepository_RevokeToken_Success(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -215,6 +232,7 @@ func TestTokenRepository_RevokeToken_Success(t *testing.T) {
 
 func TestTokenRepository_RevokeToken_NotFound_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -229,6 +247,7 @@ func TestTokenRepository_RevokeToken_NotFound_ReturnsError(t *testing.T) {
 
 func TestTokenRepository_RevokeAllUserTokens_Success(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -266,6 +285,7 @@ func TestTokenRepository_RevokeAllUserTokens_Success(t *testing.T) {
 
 func TestTokenRepository_RevokeAllUserTokens_UserNotFound_Success(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -279,6 +299,7 @@ func TestTokenRepository_RevokeAllUserTokens_UserNotFound_Success(t *testing.T) 
 
 func TestTokenRepository_CleanupExpiredTokens_Success(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -323,6 +344,7 @@ func TestTokenRepository_CleanupExpiredTokens_Success(t *testing.T) {
 
 func TestTokenRepository_CleanupExpiredTokens_NoExpiredTokens_Success(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -348,6 +370,7 @@ func TestTokenRepository_CleanupExpiredTokens_NoExpiredTokens_Success(t *testing
 
 func TestTokenRepository_SaveRefreshToken_EmptyUserID_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -365,6 +388,7 @@ func TestTokenRepository_SaveRefreshToken_EmptyUserID_ReturnsError(t *testing.T)
 
 func TestTokenRepository_SaveRefreshToken_EmptyToken_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -382,6 +406,7 @@ func TestTokenRepository_SaveRefreshToken_EmptyToken_ReturnsError(t *testing.T) 
 
 func TestTokenRepository_GetRefreshToken_EmptyToken_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -397,6 +422,7 @@ func TestTokenRepository_GetRefreshToken_EmptyToken_ReturnsError(t *testing.T) {
 
 func TestTokenRepository_RevokeToken_EmptyToken_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()
@@ -411,6 +437,7 @@ func TestTokenRepository_RevokeToken_EmptyToken_ReturnsError(t *testing.T) {
 
 func TestTokenRepository_RevokeAllUserTokens_EmptyUserID_ReturnsError(t *testing.T) {
 	// Arrange
+	setupTestLogger()
 	db := setupTestDB(t)
 	repo := NewTokenRepository(db)
 	ctx := context.Background()

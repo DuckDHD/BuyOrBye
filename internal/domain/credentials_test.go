@@ -108,10 +108,10 @@ func TestCredentials_Validate_EmptyPassword_ReturnsError(t *testing.T) {
 func TestCredentials_Validate_PasswordTooShort_ReturnsError(t *testing.T) {
 	// Arrange
 	shortPasswords := []string{
-		"1234567",    // 7 characters
-		"Ab1!",       // 4 characters
-		"Pass1",      // 6 characters
-		"1234567",    // Exactly 7 characters
+		"1234567", // 7 characters
+		"Ab1!",    // 4 characters
+		"Pass1",   // 6 characters
+		"1234567", // Exactly 7 characters
 	}
 
 	for _, password := range shortPasswords {
@@ -134,8 +134,8 @@ func TestCredentials_Validate_PasswordTooShort_ReturnsError(t *testing.T) {
 func TestCredentials_Validate_ValidPasswordLengths_ReturnsNil(t *testing.T) {
 	// Arrange
 	validPasswords := []string{
-		"12345678",           // Exactly 8 characters
-		"ValidPassword123!",  // Normal length
+		"12345678",                               // Exactly 8 characters
+		"ValidPassword123!",                      // Normal length
 		"VeryLongPasswordWithManyCharacters123!", // Long password
 	}
 

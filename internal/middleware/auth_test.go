@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
-	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/internal/dtos"
 )
 
 // MockJWTService is a mock implementation of JWTService for testing
@@ -115,7 +115,7 @@ func TestJWTAuthMiddleware_RequireAuth_MissingAuthHeader_Returns401(t *testing.T
 	// Assert
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	
-	var response types.ErrorResponseDTO
+	var response dtos.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -170,7 +170,7 @@ func TestJWTAuthMiddleware_RequireAuth_InvalidAuthHeaderFormat_Returns401(t *tes
 			// Assert
 			assert.Equal(t, http.StatusUnauthorized, w.Code)
 			
-			var response types.ErrorResponseDTO
+			var response dtos.ErrorResponseDTO
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
 			
@@ -201,7 +201,7 @@ func TestJWTAuthMiddleware_RequireAuth_InvalidToken_Returns401(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	
-	var response types.ErrorResponseDTO
+	var response dtos.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -230,7 +230,7 @@ func TestJWTAuthMiddleware_RequireAuth_ExpiredToken_Returns401(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	
-	var response types.ErrorResponseDTO
+	var response dtos.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -288,7 +288,7 @@ func TestJWTAuthMiddleware_RequireAuth_TokenErrorTypes_ReturnsAppropriateMessage
 			// Assert
 			assert.Equal(t, http.StatusUnauthorized, w.Code)
 			
-			var response types.ErrorResponseDTO
+			var response dtos.ErrorResponseDTO
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
 			

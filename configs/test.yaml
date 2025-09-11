@@ -1,0 +1,33 @@
+server:
+  port: 8081  # Test port (different from development)
+  environment: test
+  read_timeout: 5s
+  write_timeout: 10s
+  idle_timeout: 30s
+
+database:
+  # SQLite for testing
+  host: ""
+  port: 0
+  database: ":memory:"
+  username: ""
+  password: ""
+  max_idle_conns: 1
+  max_open_conns: 1
+  conn_max_lifetime: 0
+
+auth:
+  jwt_secret: test-jwt-secret-32-characters-long
+  bcrypt_cost: 4  # Lower cost for faster tests
+  access_token_ttl: 1m
+  refresh_token_ttl: 2m
+  csrf_secret: test-csrf-secret-32-characters-long
+
+logging:
+  level: warn
+  environment: test
+
+finance:
+  healthy_dti_ratio: 0.36
+  min_savings_rate: 0.20
+  emergency_fund_months: 6

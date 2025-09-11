@@ -1,0 +1,33 @@
+server:
+  port: 8080
+  environment: development
+  read_timeout: 10s
+  write_timeout: 30s
+  idle_timeout: 60s
+
+database:
+  host: mysql_bp
+  port: 3306
+  database: blueprint
+  username: melkey
+  password: password1234
+  root_password: password4321
+  max_idle_conns: 50
+  max_open_conns: 50
+  conn_max_lifetime: 0
+
+auth:
+  jwt_secret: your-very-secure-32-character-jwt-secret-key-here-2024-buyorbye
+  bcrypt_cost: 14
+  access_token_ttl: 15m
+  refresh_token_ttl: 168h
+  csrf_secret: your-very-secure-32-character-csrf-secret-key-here-2024-secure
+
+logging:
+  level: debug
+  environment: development
+
+finance:
+  healthy_dti_ratio: 0.36
+  min_savings_rate: 0.20
+  emergency_fund_months: 6

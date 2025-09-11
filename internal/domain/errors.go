@@ -55,6 +55,24 @@ var (
 	// ErrInvalidFinanceData is returned when finance data validation fails
 	ErrInvalidFinanceData = errors.New("invalid finance data")
 
+	// ErrInvalidIncomeData is returned when income data validation fails
+	ErrInvalidIncomeData = errors.New("invalid income data")
+
+	// ErrInvalidExpenseData is returned when expense data validation fails
+	ErrInvalidExpenseData = errors.New("invalid expense data")
+
+	// ErrInvalidLoanData is returned when loan data validation fails
+	ErrInvalidLoanData = errors.New("invalid loan data")
+
 	// ErrUnauthorizedAccess is returned when user tries to access data they don't own
 	ErrUnauthorizedAccess = errors.New("unauthorized access")
+
+	// ErrIncomeNotOwnedByUser is returned when user tries to access income that doesn't belong to them
+	ErrIncomeNotOwnedByUser = errors.New("income does not belong to user")
+
+	// ErrExpenseNotOwnedByUser is returned when user tries to access expense that doesn't belong to them
+	ErrExpenseNotOwnedByUser = errors.New("expense does not belong to user")
+
+	// ErrLoanNotOwnedByUser is returned when user tries to access loan that doesn't belong to them
+	ErrLoanNotOwnedByUser = errors.New("loan does not belong to user")
 )

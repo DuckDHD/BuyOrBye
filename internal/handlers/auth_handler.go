@@ -8,13 +8,12 @@ import (
 	"github.com/go-playground/validator/v10"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
-	"github.com/DuckDHD/BuyOrBye/internal/services"
-	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/internal/dtos"
+	"github.com/DuckDHD/BuyOrBye/internal/logging"
 )
 
-// AuthService interface defines the contract for authentication operations
-// This matches the interface from the services package to avoid circular imports
-type AuthService = services.AuthService
+// AuthService interface is consumed by this handler and defined in this package
+// Following the consumer-defined interface principle from CLAUDE.md
 
 // AuthHandler handles HTTP requests for authentication endpoints
 type AuthHandler struct {
@@ -34,11 +33,15 @@ func NewAuthHandler(authService AuthService) *AuthHandler {
 // Authenticates user with email and password
 // Returns JWT token pair on successful authentication
 func (h *AuthHandler) Login(c *gin.Context) {
-	var request types.LoginRequestDTO
+	logger := logging.ContextLogger(c).With(logging.WithOperation("login"))
+	logger.Info("Login request started")
+
+	var request dtos.LoginRequestDTO
 
 	// Parse and bind JSON request
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
+		logger.Warn("Login request failed - invalid JSON", logging.WithError(err))
+		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid JSON format",
@@ -63,7 +66,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			}
 		}
 
-		c.JSON(http.StatusBadRequest, types.NewValidationErrorResponse(
+		c.JSON(http.StatusBadRequest, dtos.NewValidationErrorResponse(
 			"Validation failed",
 			validationErrors,
 		))
@@ -74,27 +77,33 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	credentials := request.ToDomain()
 
 	// Call service layer
+	logger.Info("Authenticating user credentials", logging.WithUserID(credentials.Email))
 	tokenPair, err := h.authService.Login(c.Request.Context(), credentials)
 	if err != nil {
+		logger.Error("Login failed", logging.WithUserID(credentials.Email), logging.WithError(err))
 		h.handleAuthError(c, err)
 		return
 	}
 
 	// Convert domain response to DTO
-	var response types.TokenResponseDTO
+	var response dtos.TokenResponseDTO
 	response.FromDomain(tokenPair)
 
+	logger.Info("Login successful", logging.WithUserID(credentials.Email))
 	c.JSON(http.StatusOK, response)
 }
 
 // Register handles POST /api/auth/register requests
 // Creates new user account and returns JWT token pair
 func (h *AuthHandler) Register(c *gin.Context) {
-	var request types.RegisterRequestDTO
+	logger := logging.ContextLogger(c).With(logging.WithOperation("register"))
+	logger.Info("Registration request started")
+
+	var request dtos.RegisterRequestDTO
 
 	// Parse and bind JSON request
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
+		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid JSON format",
@@ -119,7 +128,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 			}
 		}
 
-		c.JSON(http.StatusBadRequest, types.NewValidationErrorResponse(
+		c.JSON(http.StatusBadRequest, dtos.NewValidationErrorResponse(
 			"Validation failed",
 			validationErrors,
 		))
@@ -134,7 +143,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if err != nil {
 		// Handle specific registration errors
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
-			c.JSON(http.StatusConflict, types.NewErrorResponse(
+			c.JSON(http.StatusConflict, dtos.NewErrorResponse(
 				http.StatusConflict,
 				"conflict",
 				"User with this email already exists",
@@ -146,7 +155,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	// Convert domain response to DTO
-	var response types.TokenResponseDTO
+	var response dtos.TokenResponseDTO
 	response.FromDomain(tokenPair)
 
 	c.JSON(http.StatusCreated, response)
@@ -155,11 +164,11 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // RefreshToken handles POST /api/auth/refresh requests
 // Generates new JWT token pair using valid refresh token
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
-	var request types.RefreshTokenRequestDTO
+	var request dtos.RefreshTokenRequestDTO
 
 	// Parse and bind JSON request
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
+		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid JSON format",
@@ -179,7 +188,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 			}
 		}
 
-		c.JSON(http.StatusBadRequest, types.NewValidationErrorResponse(
+		c.JSON(http.StatusBadRequest, dtos.NewValidationErrorResponse(
 			"Validation failed",
 			validationErrors,
 		))
@@ -194,7 +203,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	}
 
 	// Convert domain response to DTO
-	var response types.TokenResponseDTO
+	var response dtos.TokenResponseDTO
 	response.FromDomain(tokenPair)
 
 	c.JSON(http.StatusOK, response)
@@ -203,11 +212,11 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 // Logout handles POST /api/auth/logout requests
 // Revokes the provided refresh token
 func (h *AuthHandler) Logout(c *gin.Context) {
-	var request types.RefreshTokenRequestDTO
+	var request dtos.RefreshTokenRequestDTO
 
 	// Parse and bind JSON request
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
+		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid JSON format",
@@ -227,7 +236,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 			}
 		}
 
-		c.JSON(http.StatusBadRequest, types.NewValidationErrorResponse(
+		c.JSON(http.StatusBadRequest, dtos.NewValidationErrorResponse(
 			"Validation failed",
 			validationErrors,
 		))
@@ -250,57 +259,57 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 func (h *AuthHandler) handleAuthError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, domain.ErrInvalidCredentials):
-		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Invalid email or password",
 		))
 	case errors.Is(err, domain.ErrAccountInactive):
-		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Your account is inactive. Please contact support",
 		))
 	case errors.Is(err, domain.ErrInvalidToken):
-		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Invalid or malformed token",
 		))
 	case errors.Is(err, domain.ErrTokenExpired):
-		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"token has expired",
 		))
 	case errors.Is(err, domain.ErrTokenRevoked):
-		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Token has been revoked",
 		))
 	case errors.Is(err, domain.ErrUserNotFound):
 		// Map user not found to invalid credentials for security
-		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Invalid email or password",
 		))
 	case errors.Is(err, domain.ErrUserAlreadyExists):
-		c.JSON(http.StatusConflict, types.NewErrorResponse(
+		c.JSON(http.StatusConflict, dtos.NewErrorResponse(
 			http.StatusConflict,
 			"conflict",
 			"User with this email already exists",
 		))
 	case errors.Is(err, domain.ErrInvalidUserData):
-		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
+		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid user data provided",
 		))
 	default:
 		// Internal server error for unexpected errors
-		c.JSON(http.StatusInternalServerError, types.NewErrorResponse(
+		c.JSON(http.StatusInternalServerError, dtos.NewErrorResponse(
 			http.StatusInternalServerError,
 			"internal_error",
 			"An internal error occurred. Please try again later",

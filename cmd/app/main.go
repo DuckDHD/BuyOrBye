@@ -2,43 +2,55 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/joho/godotenv/autoload"
+	"go.uber.org/zap"
 
-	"github.com/DuckDHD/BuyOrBye/internal/database"
+	"github.com/DuckDHD/BuyOrBye/internal/config"
 	"github.com/DuckDHD/BuyOrBye/internal/handlers"
+	"github.com/DuckDHD/BuyOrBye/internal/logging"
 	"github.com/DuckDHD/BuyOrBye/internal/middleware"
 	"github.com/DuckDHD/BuyOrBye/internal/repositories"
 	"github.com/DuckDHD/BuyOrBye/internal/services"
 )
 
 func main() {
-	// Get port from environment
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	// Initialize GORM database service
-	gormService, err := database.NewGormService()
+	// Load configuration first
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		panic("Failed to load configuration: " + err.Error())
 	}
 
-	db := gormService.GetDB()
+	// Initialize logger with config
+	if err := logging.InitLogger(logging.LogConfig{
+		Environment: cfg.Logging.Environment,
+		Level:       cfg.Logging.Level,
+	}); err != nil {
+		panic("Failed to initialize logger: " + err.Error())
+	}
+	logger := logging.GetLogger()
+	logger.Info("Configuration loaded successfully", 
+		logging.WithComponent("main"),
+		zap.String("environment", cfg.Server.Environment),
+		zap.String("config_file", config.GetConfigPath(cfg.Server.Environment)))
 
-	// Initialize core services
+	// Initialize database service with config
+	dbService, err := config.NewDatabaseService(&cfg.Database, &cfg.Logging)
+	if err != nil {
+		logger.Fatal("Failed to initialize database", logging.WithError(err))
+	}
+
+	db := dbService.GetDB()
+
+	// Initialize core services with config
 	passwordService := services.NewPasswordService()
-	jwtService, err := services.NewJWTService()
+	jwtService, err := services.NewJWTServiceFromConfig(&cfg.Auth)
 	if err != nil {
-		log.Fatalf("Failed to initialize JWT service: %v", err)
+		logger.Fatal("Failed to initialize JWT service", logging.WithError(err))
 	}
 
 	// Initialize repositories
@@ -70,10 +82,20 @@ func main() {
 	// Setup Gin router
 	router := gin.Default()
 
-	// Global middleware
+	// Global middleware with config
 	router.Use(middleware.CORS())
-	router.Use(middleware.Logger())
-	router.Use(middleware.Recovery())
+	
+	// Configure logging middleware based on environment
+	middlewareConfig := config.GetMiddlewareConfig(cfg.Server.Environment)
+	loggingConfig := logging.HTTPLoggingConfig{
+		SkipPaths:       middlewareConfig.SkipPaths,
+		LogRequestBody:  middlewareConfig.LogRequestBody,
+		LogResponseBody: middlewareConfig.LogResponseBody,
+		MaxBodySize:     middlewareConfig.MaxBodySize,
+	}
+	router.Use(logging.HTTPLoggingMiddleware(loggingConfig))
+	router.Use(logging.ErrorLoggingMiddleware())
+	router.Use(logging.RequestIDMiddleware())
 	router.Use(middleware.ValidateRequestLimits())
 
 	// Health check
@@ -155,16 +177,14 @@ func main() {
 		// finance.GET("/insights", financeHandler.GetSpendingInsights)
 	}
 
-	// Create HTTP server
-	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      router,
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
-	}
+	// Create HTTP server with config
+	serverService := config.NewServerService(&cfg.Server)
+	server := serverService.CreateServer(router)
 
-	log.Printf("Starting BuyOrBye server on port %s", port)
+	logger.Info("Starting BuyOrBye server", 
+		logging.WithComponent("main"),
+		zap.String("address", serverService.GetAddress()),
+		zap.String("environment", cfg.Server.Environment))
 
 	// Create a done channel to signal when the shutdown is complete
 	done := make(chan bool, 1)
@@ -174,12 +194,12 @@ func main() {
 
 	// Start the server
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("HTTP server error: %v", err)
+		logger.Fatal("HTTP server error", logging.WithError(err))
 	}
 
 	// Wait for the graceful shutdown to complete
 	<-done
-	log.Println("Graceful shutdown complete.")
+	logger.Info("Graceful shutdown complete")
 }
 
 func gracefulShutdown(server *http.Server, done chan bool) {
@@ -190,7 +210,8 @@ func gracefulShutdown(server *http.Server, done chan bool) {
 	// Listen for the interrupt signal.
 	<-ctx.Done()
 
-	log.Println("Shutting down gracefully, press Ctrl+C again to force")
+	logger := logging.GetLogger()
+	logger.Info("Shutting down gracefully, press Ctrl+C again to force")
 	stop() // Allow Ctrl+C to force shutdown
 
 	// The context is used to inform the server it has 5 seconds to finish
@@ -198,10 +219,10 @@ func gracefulShutdown(server *http.Server, done chan bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown with error: %v", err)
+		logger.Error("Server forced to shutdown", logging.WithError(err))
 	}
 
-	log.Println("Server exiting")
+	logger.Info("Server exiting")
 
 	// Notify the main goroutine that the shutdown is complete
 	done <- true

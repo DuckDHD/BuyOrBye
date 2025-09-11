@@ -248,9 +248,9 @@ func TestIncome_NormalizeToMonthly_WeeklyFrequency_ReturnsMonthlyEquivalent(t *t
 		weeklyAmount   float64
 		expectedMonthly float64
 	}{
-		{"round_number", 1000.0, 4333.33},
-		{"with_decimals", 1250.75, 5419.58},
-		{"small_amount", 100.0, 433.33},
+		{"round_number", 1000.0, 4333.333333333333},
+		{"with_decimals", 1250.75, 5419.916666666667},
+		{"small_amount", 100.0, 433.3333333333333},
 	}
 
 	for _, tt := range tests {
@@ -277,9 +277,9 @@ func TestIncome_NormalizeToMonthly_DailyFrequency_ReturnsMonthlyEquivalent(t *te
 		dailyAmount    float64
 		expectedMonthly float64
 	}{
-		{"round_number", 100.0, 3041.67}, // 100 * 365.25 / 12
-		{"with_decimals", 150.75, 4587.44},
-		{"small_amount", 50.0, 1520.83},
+		{"round_number", 100.0, 3043.75}, // 100 * 365.25 / 12
+		{"with_decimals", 150.75, 4588.453125},
+		{"small_amount", 50.0, 1521.875},
 	}
 
 	for _, tt := range tests {

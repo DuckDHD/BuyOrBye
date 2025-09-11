@@ -403,9 +403,9 @@ func TestExpense_NormalizeToMonthly_DailyFrequency_ReturnsMonthlyEquivalent(t *t
 		dailyAmount    float64
 		expectedMonthly float64
 	}{
-		{"coffee", 5.0, 152.08},    // 5 * 365.25 / 12
-		{"parking", 10.0, 304.17}, // 10 * 365.25 / 12
-		{"lunch", 12.50, 380.21},  // 12.50 * 365.25 / 12
+		{"coffee", 5.0, 152.1875},    // 5 * 365.25 / 12
+		{"parking", 10.0, 304.375}, // 10 * 365.25 / 12
+		{"lunch", 12.50, 380.46875},  // 12.50 * 365.25 / 12
 	}
 
 	for _, tt := range tests {

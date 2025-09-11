@@ -10,8 +10,8 @@ import (
 
 // ExpenseModel represents the expense table structure in the database
 type ExpenseModel struct {
-	ID        string         `gorm:"primaryKey;type:varchar(36)" json:"id"`
-	UserID    string         `gorm:"not null;index;type:varchar(36)" json:"user_id"`
+	ID        string         `gorm:"primaryKey;type:varchar(256)" json:"id"`
+	UserID    string         `gorm:"not null;index;type:varchar(256)" json:"user_id"`
 	Category  string         `gorm:"not null;type:varchar(50)" json:"category"`
 	Name      string         `gorm:"not null;type:varchar(255)" json:"name"`
 	Amount    float64        `gorm:"not null;type:decimal(10,2)" json:"amount"`

@@ -1,12 +1,13 @@
 package middleware
 
 import (
-	"log"
 	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/csrf"
+
+	"github.com/DuckDHD/BuyOrBye/internal/logging"
 )
 
 // CSRFConfig holds configuration for CSRF protection middleware
@@ -83,7 +84,8 @@ func NewCSRFMiddleware(config CSRFConfig) gin.HandlerFunc {
 		// Custom error handler to return JSON error response
 		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if reason := csrf.FailureReason(r); reason != nil {
-				log.Printf("csrf blocked: %v", reason)
+				logger := logging.MiddlewareLogger()
+				logger.Warn("CSRF blocked request", logging.WithComponent("csrf"), logging.WithError(reason))
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
@@ -92,6 +94,12 @@ func NewCSRFMiddleware(config CSRFConfig) gin.HandlerFunc {
 	)
 
 	return func(c *gin.Context) {
+		// Check if this route is exempt from CSRF protection
+		if exempt, exists := c.Get("csrf_exempt"); exists && exempt.(bool) {
+			c.Next()
+			return
+		}
+
 		// Let gorilla/csrf gatekeep the chain.
 		// It will call our inner handler ONLY if the token is valid.
 		calledNext := false

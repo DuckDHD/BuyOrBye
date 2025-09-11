@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	
+	"github.com/DuckDHD/BuyOrBye/internal/config"
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
 )
 
@@ -42,6 +43,27 @@ func NewJWTService() (JWTService, error) {
 		secret:            []byte(secret),
 		accessTokenTTL:    15 * time.Minute, // 15 minutes as specified
 		refreshTokenTTL:   7 * 24 * time.Hour, // 7 days as specified
+	}, nil
+}
+
+// NewJWTServiceFromConfig creates a new JWT service instance from configuration
+func NewJWTServiceFromConfig(authConfig *config.AuthConfig) (JWTService, error) {
+	if authConfig == nil {
+		return nil, fmt.Errorf("auth configuration cannot be nil")
+	}
+	
+	if authConfig.JWTSecret == "" {
+		return nil, fmt.Errorf("JWT secret cannot be empty")
+	}
+	
+	if len(authConfig.JWTSecret) < 32 {
+		return nil, fmt.Errorf("JWT secret must be at least 32 characters long")
+	}
+
+	return &jwtService{
+		secret:            []byte(authConfig.JWTSecret),
+		accessTokenTTL:    authConfig.AccessTokenTTL,
+		refreshTokenTTL:   authConfig.RefreshTokenTTL,
 	}, nil
 }
 

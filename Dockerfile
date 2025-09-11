@@ -15,6 +15,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
 COPY . .
+COPY ./configs ./
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
@@ -41,6 +42,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM alpine:3.20.1 AS prod
 WORKDIR /app
 COPY --from=build /app/main /app/main
+# Copy the configs directory to the expected location
+COPY --from=build /app/configs /app/configs
 # COPY --from=build /app/cmd/web/assets /app/cmd/web/assets   # if you serve assets from disk
 ENV PORT=8080
 EXPOSE 8080

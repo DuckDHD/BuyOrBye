@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
+	"github.com/DuckDHD/BuyOrBye/internal/logging"
 	"github.com/DuckDHD/BuyOrBye/internal/models"
 	"github.com/DuckDHD/BuyOrBye/internal/services"
 	"gorm.io/gorm"
@@ -31,6 +32,12 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 		return fmt.Errorf("user cannot be nil: %w", domain.ErrInvalidUserData)
 	}
 
+	logger := logging.RepositoryLogger()
+	if logger != nil {
+		logger = logger.With(logging.WithOperation("create_user"))
+		logger.Debug("Creating new user", logging.WithUserID(user.Email))
+	}
+
 	// Validate domain user before creating
 	if err := user.Validate(); err != nil {
 		return fmt.Errorf("user validation failed: %w", domain.ErrInvalidUserData)
@@ -52,7 +59,13 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 	if err := r.db.WithContext(ctx).Create(&userModel).Error; err != nil {
 		// Check for unique constraint violation (duplicate email)
 		if isDuplicateKeyError(err) {
+			if logger != nil {
+				logger.Warn("User creation failed - duplicate email", logging.WithUserID(user.Email), logging.WithError(err))
+			}
 			return fmt.Errorf("user with email %s already exists: %w", user.Email, domain.ErrUserAlreadyExists)
+		}
+		if logger != nil {
+			logger.Error("User creation failed - database error", logging.WithUserID(user.Email), logging.WithError(err))
 		}
 		return fmt.Errorf("failed to create user: %w", err)
 	}

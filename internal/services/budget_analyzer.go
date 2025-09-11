@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
 )
@@ -15,7 +16,8 @@ type budgetAnalyzer struct {
 }
 
 // NewBudgetAnalyzer creates a new BudgetAnalyzer instance
-func NewBudgetAnalyzer(financeService FinanceService) BudgetAnalyzer {
+// Returns concrete type that implements BudgetAnalyzer interface
+func NewBudgetAnalyzer(financeService FinanceService) *budgetAnalyzer {
 	return &budgetAnalyzer{
 		financeService: financeService,
 	}
@@ -68,7 +70,9 @@ func (ba *budgetAnalyzer) AnalyzeBudget(ctx context.Context, userID string) (Bud
 	}
 
 	for _, spending := range insights.CategoryBreakdown {
-		if limit, exists := categoryLimits[spending.Category]; exists {
+		// Normalize category name for case-insensitive matching
+		normalizedCategory := strings.Title(strings.ToLower(spending.Category))
+		if limit, exists := categoryLimits[normalizedCategory]; exists {
 			recommendedMax := totalIncome * limit
 			if spending.MonthlyAmount > recommendedMax {
 				overspending := CategoryOverspending{
@@ -135,7 +139,7 @@ func (ba *budgetAnalyzer) GetSpendingInsights(ctx context.Context, userID string
 	// Get expenses and income data
 	expenses, err := ba.financeService.GetUserExpenses(ctx, userID)
 	if err != nil {
-		return SpendingInsights{}, fmt.Errorf("failed to get expenses: %w", err)
+		return SpendingInsights{}, fmt.Errorf("failed to get user expenses: %w", err)
 	}
 
 	summary, err := ba.financeService.CalculateFinanceSummary(ctx, userID)
@@ -301,15 +305,17 @@ func (ba *budgetAnalyzer) RecommendSavings(ctx context.Context, userID string) (
 		SavingsPercent: currentSavingsPercent,
 	}
 
-	// Calculate savings gap
-	savingsGap := idealSavings - currentSavings
+	// Calculate savings gap (positive = saving more than ideal, negative = saving less than ideal)
+	savingsGap := currentSavings - idealSavings
 
 	// Generate recommendations
 	var recommendedActions []string
 	
-	if savingsGap > 0 {
+	if savingsGap < 0 {
+		// Saving less than ideal - need to increase savings
+		deficit := -savingsGap
 		recommendedActions = append(recommendedActions, 
-			fmt.Sprintf("Increase savings by $%.2f per month to reach 20%% target", savingsGap))
+			fmt.Sprintf("Increase savings by $%.2f per month to reach 20%% target", deficit))
 
 		if currentWantsPercent > 30 {
 			excessWants := currentWants - idealWants
@@ -323,6 +329,7 @@ func (ba *budgetAnalyzer) RecommendSavings(ctx context.Context, userID string) (
 				fmt.Sprintf("Consider reducing essential expenses by $%.2f or increasing income", excessNeeds))
 		}
 	} else {
+		// Saving more than ideal - good job!
 		recommendedActions = append(recommendedActions, "Great job! You're meeting the 20% savings target")
 		recommendedActions = append(recommendedActions, "Consider investing surplus savings for long-term growth")
 	}
@@ -377,8 +384,8 @@ func (ba *budgetAnalyzer) IdentifyUnnecessaryExpenses(ctx context.Context, userI
 		}
 
 		// Apply optimization rules by category
-		switch expense.Category {
-		case "Entertainment", "Dining Out":
+		switch strings.ToLower(expense.Category) {
+		case "entertainment", "dining out", "dining":
 			// Suggest 25% reduction for entertainment and dining
 			optimization.RecommendedAmount = monthlyAmount * 0.75
 			optimization.PotentialSavings = monthlyAmount * 0.25
@@ -386,7 +393,7 @@ func (ba *budgetAnalyzer) IdentifyUnnecessaryExpenses(ctx context.Context, userI
 			optimization.Priority = 3
 			optimization.Reasoning = "Entertainment and dining expenses can often be reduced without major lifestyle changes"
 
-		case "Shopping":
+		case "shopping":
 			// Suggest 30% reduction for shopping
 			optimization.RecommendedAmount = monthlyAmount * 0.70
 			optimization.PotentialSavings = monthlyAmount * 0.30
@@ -474,7 +481,9 @@ func calculateBudgetHealthScore(summary domain.FinanceSummary, overspendingCateg
 	}
 
 	// Deduct points for overspending categories
-	score -= overspendingCategories / 2
+	if overspendingCategories > 0 {
+		score -= (overspendingCategories + 1) / 2 // More aggressive penalty
+	}
 
 	// Ensure minimum score of 1
 	if score < 1 {
@@ -502,20 +511,20 @@ func calculateAchievabilityScore(summary domain.FinanceSummary, savingsGap float
 	// Base score of 5
 	score := 5
 
-	// If already meeting savings target
-	if savingsGap <= 0 {
+	// If already meeting or exceeding savings target
+	if savingsGap >= 0 {
 		return 10
 	}
 
-	// Adjust based on gap relative to income
+	// Adjust based on gap relative to income (negative gap means deficit)
 	if summary.MonthlyIncome > 0 {
-		gapPercentage := savingsGap / summary.MonthlyIncome
+		deficitPercentage := (-savingsGap) / summary.MonthlyIncome
 
-		if gapPercentage < 0.05 { // Less than 5% of income
+		if deficitPercentage < 0.05 { // Less than 5% of income deficit
 			score += 3
-		} else if gapPercentage < 0.10 { // Less than 10% of income
+		} else if deficitPercentage < 0.10 { // Less than 10% of income deficit
 			score += 1
-		} else if gapPercentage > 0.20 { // More than 20% of income
+		} else if deficitPercentage > 0.20 { // More than 20% of income deficit
 			score -= 3
 		}
 	}

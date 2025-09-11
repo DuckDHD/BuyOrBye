@@ -15,7 +15,8 @@ type financeService struct {
 }
 
 // NewFinanceService creates a new FinanceService instance
-func NewFinanceService(repos *FinanceRepositories) FinanceService {
+// Returns concrete type that implements FinanceService interface defined in handlers package
+func NewFinanceService(repos *FinanceRepositories) *financeService {
 	return &financeService{
 		repos: repos,
 	}
@@ -24,7 +25,7 @@ func NewFinanceService(repos *FinanceRepositories) FinanceService {
 // AddIncome validates and adds a new income record
 func (s *financeService) AddIncome(ctx context.Context, income domain.Income) error {
 	if err := income.Validate(); err != nil {
-		return domain.ErrInvalidFinanceData
+		return domain.ErrInvalidIncomeData
 	}
 
 	return s.repos.Income.SaveIncome(ctx, income)
@@ -33,17 +34,17 @@ func (s *financeService) AddIncome(ctx context.Context, income domain.Income) er
 // UpdateIncome validates and updates an existing income record
 func (s *financeService) UpdateIncome(ctx context.Context, income domain.Income) error {
 	if err := income.Validate(); err != nil {
-		return domain.ErrInvalidFinanceData
+		return domain.ErrInvalidIncomeData
 	}
 
 	// Verify the income belongs to the user by getting it first
 	existing, err := s.repos.Income.GetIncomeByID(ctx, income.ID)
 	if err != nil {
-		return domain.ErrIncomeNotFound
+		return fmt.Errorf("failed to verify income ownership: %w", err)
 	}
 
 	if existing.UserID != income.UserID {
-		return domain.ErrUnauthorizedAccess
+		return domain.ErrIncomeNotOwnedByUser
 	}
 
 	return s.repos.Income.UpdateIncome(ctx, income)
@@ -58,7 +59,7 @@ func (s *financeService) DeleteIncome(ctx context.Context, userID, incomeID stri
 	}
 
 	if existing.UserID != userID {
-		return domain.ErrUnauthorizedAccess
+		return domain.ErrIncomeNotOwnedByUser
 	}
 
 	return s.repos.Income.DeleteIncome(ctx, incomeID)
@@ -77,7 +78,7 @@ func (s *financeService) GetActiveUserIncomes(ctx context.Context, userID string
 // AddExpense validates and adds a new expense record
 func (s *financeService) AddExpense(ctx context.Context, expense domain.Expense) error {
 	if err := expense.Validate(); err != nil {
-		return domain.ErrInvalidFinanceData
+		return domain.ErrInvalidExpenseData
 	}
 
 	return s.repos.Expense.SaveExpense(ctx, expense)
@@ -86,7 +87,7 @@ func (s *financeService) AddExpense(ctx context.Context, expense domain.Expense)
 // UpdateExpense validates and updates an existing expense record
 func (s *financeService) UpdateExpense(ctx context.Context, expense domain.Expense) error {
 	if err := expense.Validate(); err != nil {
-		return domain.ErrInvalidFinanceData
+		return domain.ErrInvalidExpenseData
 	}
 
 	// Verify ownership
@@ -96,7 +97,7 @@ func (s *financeService) UpdateExpense(ctx context.Context, expense domain.Expen
 	}
 
 	if existing.UserID != expense.UserID {
-		return domain.ErrUnauthorizedAccess
+		return domain.ErrExpenseNotOwnedByUser
 	}
 
 	return s.repos.Expense.UpdateExpense(ctx, expense)
@@ -111,7 +112,7 @@ func (s *financeService) DeleteExpense(ctx context.Context, userID, expenseID st
 	}
 
 	if existing.UserID != userID {
-		return domain.ErrUnauthorizedAccess
+		return domain.ErrExpenseNotOwnedByUser
 	}
 
 	return s.repos.Expense.DeleteExpense(ctx, expenseID)
@@ -130,7 +131,7 @@ func (s *financeService) GetUserExpensesByCategory(ctx context.Context, userID, 
 // AddLoan validates and adds a new loan record
 func (s *financeService) AddLoan(ctx context.Context, loan domain.Loan) error {
 	if err := loan.Validate(); err != nil {
-		return domain.ErrInvalidFinanceData
+		return domain.ErrInvalidLoanData
 	}
 
 	return s.repos.Loan.SaveLoan(ctx, loan)
@@ -139,7 +140,7 @@ func (s *financeService) AddLoan(ctx context.Context, loan domain.Loan) error {
 // UpdateLoan validates and updates an existing loan record
 func (s *financeService) UpdateLoan(ctx context.Context, loan domain.Loan) error {
 	if err := loan.Validate(); err != nil {
-		return domain.ErrInvalidFinanceData
+		return domain.ErrInvalidLoanData
 	}
 
 	// Verify ownership
@@ -149,7 +150,7 @@ func (s *financeService) UpdateLoan(ctx context.Context, loan domain.Loan) error
 	}
 
 	if existing.UserID != loan.UserID {
-		return domain.ErrUnauthorizedAccess
+		return domain.ErrLoanNotOwnedByUser
 	}
 
 	return s.repos.Loan.UpdateLoan(ctx, loan)
@@ -169,7 +170,7 @@ func (s *financeService) UpdateLoanBalance(ctx context.Context, userID, loanID s
 	}
 
 	if existing.UserID != userID {
-		return domain.ErrUnauthorizedAccess
+		return domain.ErrLoanNotOwnedByUser
 	}
 
 	if newBalance < 0 {

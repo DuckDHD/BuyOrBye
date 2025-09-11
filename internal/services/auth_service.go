@@ -7,32 +7,11 @@ import (
 	"time"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
+	"github.com/DuckDHD/BuyOrBye/internal/logging"
 )
 
-// AuthService defines the interface for authentication operations
-// This interface contains all business logic for user authentication
-type AuthService interface {
-	// Login authenticates a user with email and password
-	// Returns a token pair on successful authentication
-	// Returns domain.ErrInvalidCredentials if credentials are invalid
-	// Returns domain.ErrAccountInactive if account is inactive
-	Login(ctx context.Context, credentials domain.Credentials) (*domain.TokenPair, error)
-
-	// Register creates a new user account and returns authentication tokens
-	// Returns domain.ErrUserAlreadyExists if user already exists
-	// Returns domain.ErrInvalidUserData if user data validation fails
-	Register(ctx context.Context, user *domain.User, password string) (*domain.TokenPair, error)
-
-	// RefreshToken generates a new token pair using a valid refresh token
-	// Returns domain.ErrInvalidToken if token is invalid
-	// Returns domain.ErrTokenExpired if token has expired
-	// Returns domain.ErrTokenRevoked if token has been revoked
-	RefreshToken(ctx context.Context, refreshToken string) (*domain.TokenPair, error)
-
-	// Logout revokes a user's refresh token
-	// Returns domain.ErrInvalidToken if token is invalid
-	Logout(ctx context.Context, refreshToken string) error
-}
+// authService implements the AuthService interface defined in handlers package
+// Following the consumer-defined interface principle
 
 // authService implements AuthService with dependency injection
 type authService struct {
@@ -43,13 +22,13 @@ type authService struct {
 }
 
 // NewAuthService creates a new authentication service instance
-// Requires all dependencies to be injected following dependency inversion principle
+// Returns concrete type that implements AuthService interface defined in handlers package
 func NewAuthService(
 	userRepo UserRepository,
 	tokenRepo TokenRepository,
 	passwordService PasswordService,
 	jwtService JWTService,
-) AuthService {
+) *authService {
 	return &authService{
 		userRepo:        userRepo,
 		tokenRepo:       tokenRepo,
@@ -60,6 +39,9 @@ func NewAuthService(
 
 // Login authenticates a user with email and password
 func (a *authService) Login(ctx context.Context, credentials domain.Credentials) (*domain.TokenPair, error) {
+	logger := logging.ServiceLogger().With(logging.WithOperation("login"), logging.WithUserID(credentials.Email))
+	logger.Info("Starting user authentication")
+
 	// Validate credentials
 	if err := credentials.Validate(); err != nil {
 		return nil, domain.ErrInvalidCredentials
@@ -80,7 +62,9 @@ func (a *authService) Login(ctx context.Context, credentials domain.Credentials)
 	}
 
 	// Verify password
+	logger.Debug("Verifying user password")
 	if err := a.passwordService.CheckPassword(user.PasswordHash, credentials.Password); err != nil {
+		logger.Warn("Password verification failed")
 		return nil, domain.ErrInvalidCredentials
 	}
 
@@ -99,10 +83,10 @@ func (a *authService) Login(ctx context.Context, credentials domain.Credentials)
 	// Update last login time
 	if err := a.userRepo.UpdateLastLogin(ctx, user.ID, time.Now()); err != nil {
 		// Log error but don't fail the login process
-		// In production, you would use a proper logger here
-		_ = err // Ignore error for now
+		logger.Warn("Failed to update last login time", logging.WithError(err))
 	}
 
+	logger.Info("User authentication successful")
 	return tokenPair, nil
 }
 
@@ -110,7 +94,7 @@ func (a *authService) Login(ctx context.Context, credentials domain.Credentials)
 func (a *authService) Register(ctx context.Context, user *domain.User, password string) (*domain.TokenPair, error) {
 	// Validate input parameters
 	if user == nil {
-		return nil, domain.ErrInvalidUserData
+		return nil, fmt.Errorf("user cannot be nil: %w", domain.ErrInvalidUserData)
 	}
 
 	// Validate name

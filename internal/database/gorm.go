@@ -43,10 +43,14 @@ func NewGormService() (*GormService, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Auto-migrate the schema for authentication models
+	// Auto-migrate the schema for all models
 	if err := db.AutoMigrate(
 		&models.UserModel{},
 		&models.RefreshTokenModel{},
+		&models.ExpenseModel{},
+		&models.IncomeModel{},
+		&models.LoanModel{},
+		&models.FinanceSummaryModel{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database schema: %w", err)
 	}

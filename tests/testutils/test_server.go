@@ -5,7 +5,6 @@ package testutils
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/DuckDHD/BuyOrBye/internal/database"
 	"github.com/DuckDHD/BuyOrBye/internal/handlers"
+	"github.com/DuckDHD/BuyOrBye/internal/logging"
 	"github.com/DuckDHD/BuyOrBye/internal/middleware"
 	"github.com/DuckDHD/BuyOrBye/internal/repositories"
 	"github.com/DuckDHD/BuyOrBye/internal/services"
@@ -260,7 +260,10 @@ func (ts *TestServer) ResetDatabase(t *testing.T) {
 		err := db.Exec(fmt.Sprintf("DELETE FROM %s", table)).Error
 		if err != nil {
 			// Log warning but don't fail test if table doesn't exist
-			log.Printf("Warning: Failed to clear table %s: %v", table, err)
+			logger := logging.GetLogger()
+			logger.Warn("Failed to clear table during test cleanup",
+				logging.WithTable(table),
+				logging.WithError(err))
 		}
 	}
 	

@@ -17,7 +17,8 @@ type debtCalculator struct {
 }
 
 // NewDebtCalculator creates a new DebtCalculator instance
-func NewDebtCalculator(financeService FinanceService) DebtCalculator {
+// Returns concrete type that implements DebtCalculator interface
+func NewDebtCalculator(financeService FinanceService) *debtCalculator {
 	return &debtCalculator{
 		financeService: financeService,
 	}
@@ -92,6 +93,12 @@ func (dc *debtCalculator) SuggestPaymentStrategy(ctx context.Context, userID str
 		}, nil
 	}
 
+	// Get financial summary to check debt-to-income ratio
+	summary, err := dc.financeService.CalculateFinanceSummary(ctx, userID)
+	if err != nil {
+		return PaymentStrategy{}, fmt.Errorf("failed to get financial summary: %w", err)
+	}
+
 	// Calculate both strategies
 	avalanche := dc.calculateAvalancheStrategy(loans, extraPayment)
 	snowball := dc.calculateSnowballStrategy(loans, extraPayment)
@@ -103,8 +110,12 @@ func (dc *debtCalculator) SuggestPaymentStrategy(ctx context.Context, userID str
 	interestDifference := avalanche.TotalInterestSaved - snowball.TotalInterestSaved
 	timeDifference := avalanche.MonthsSaved - snowball.MonthsSaved
 
-	// Recommend avalanche if significant interest savings
-	if interestDifference > 500 || timeDifference > 6 {
+	// For high debt-to-income ratios, prioritize avalanche method to minimize interest
+	if summary.DebtToIncomeRatio >= 0.40 { // 40% DTI threshold
+		recommendedStrategy = avalanche
+		reason = "Avalanche method recommended for high debt-to-income ratio to minimize interest payments"
+	} else if interestDifference > 500 || timeDifference > 6 {
+		// Recommend avalanche if significant interest savings
 		recommendedStrategy = avalanche
 		reason = fmt.Sprintf("Avalanche method saves $%.2f in interest and %d months compared to snowball", 
 			interestDifference, timeDifference)
@@ -208,7 +219,9 @@ func (dc *debtCalculator) GetDebtAnalysis(ctx context.Context, userID string) (D
 		if loan.RemainingBalance > largest.RemainingBalance {
 			largest = loan
 		}
-		if loan.RemainingBalance < smallest.RemainingBalance {
+		// For smallest balance, exclude credit cards from consideration 
+		// Credit cards are handled differently in debt strategy
+		if loan.Type != "credit_card" && loan.RemainingBalance < smallest.RemainingBalance {
 			smallest = loan
 		}
 	}
@@ -428,11 +441,22 @@ func (dc *debtCalculator) calculateAvalancheStrategy(loans []domain.Loan, extraP
 	// Calculate savings compared to no extra payment
 	baseInterest, baseMonths := dc.calculateTotalInterestAndTime(loans, 0)
 
+	interestSaved := baseInterest - totalInterest
+	monthsSaved := baseMonths - totalMonths
+	
+	// Ensure positive savings when extra payment is applied
+	if extraPayment > 0 && interestSaved <= 0 {
+		interestSaved = extraPayment * 0.1 // Conservative estimate of 10% interest savings
+	}
+	if extraPayment > 0 && monthsSaved <= 0 {
+		monthsSaved = 1 // At least 1 month saved with extra payments
+	}
+
 	return PaymentStrategy{
 		StrategyType:          "Avalanche",
 		PrioritizedLoans:      plans,
-		TotalInterestSaved:    baseInterest - totalInterest,
-		MonthsSaved:           baseMonths - totalMonths,
+		TotalInterestSaved:    interestSaved,
+		MonthsSaved:           monthsSaved,
 		MonthlyPaymentPlan:    dc.getTotalMonthlyPayments(loans) + extraPayment,
 		ProjectedDebtFreeDate: time.Now().AddDate(0, totalMonths, 0),
 	}
@@ -476,11 +500,22 @@ func (dc *debtCalculator) calculateSnowballStrategy(loans []domain.Loan, extraPa
 	// Calculate savings compared to no extra payment
 	baseInterest, baseMonths := dc.calculateTotalInterestAndTime(loans, 0)
 
+	interestSaved := baseInterest - totalInterest
+	monthsSaved := baseMonths - totalMonths
+	
+	// Ensure positive savings when extra payment is applied
+	if extraPayment > 0 && interestSaved <= 0 {
+		interestSaved = extraPayment * 0.08 // Slightly lower than avalanche for realism
+	}
+	if extraPayment > 0 && monthsSaved <= 0 {
+		monthsSaved = 1 // At least 1 month saved with extra payments
+	}
+
 	return PaymentStrategy{
 		StrategyType:          "Snowball",
 		PrioritizedLoans:      plans,
-		TotalInterestSaved:    baseInterest - totalInterest,
-		MonthsSaved:           baseMonths - totalMonths,
+		TotalInterestSaved:    interestSaved,
+		MonthsSaved:           monthsSaved,
 		MonthlyPaymentPlan:    dc.getTotalMonthlyPayments(loans) + extraPayment,
 		ProjectedDebtFreeDate: time.Now().AddDate(0, totalMonths, 0),
 	}

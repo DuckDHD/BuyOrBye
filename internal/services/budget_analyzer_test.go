@@ -215,7 +215,12 @@ func TestBudgetAnalyzer_GetSpendingInsights_NoExpenses(t *testing.T) {
 	ctx := context.Background()
 
 	mockFinanceService.On("GetUserExpenses", ctx, "user1").Return([]domain.Expense{}, nil)
-	mockFinanceService.On("GetUserIncomes", ctx, "user1").Return([]domain.Income{}, nil)
+	mockFinanceService.On("CalculateFinanceSummary", ctx, "user1").Return(domain.FinanceSummary{
+		UserID: "user1",
+		MonthlyIncome: 0.0,
+		MonthlyExpenses: 0.0,
+		DisposableIncome: 0.0,
+	}, nil)
 
 	insights, err := analyzer.GetSpendingInsights(ctx, "user1")
 
@@ -306,27 +311,27 @@ func TestBudgetAnalyzer_IdentifyUnnecessaryExpenses_Success(t *testing.T) {
 
 	// Mix of necessary and unnecessary expenses
 	expenses := []domain.Expense{
-		createTestExpense("exp1", "user1", "housing", "Rent", 1500.0, "monthly", true, 1),     // Necessary
-		createTestExpense("exp2", "user1", "food", "Groceries", 400.0, "monthly", true, 1),    // Necessary
-		createTestExpense("exp3", "user1", "entertainment", "Streaming", 50.0, "monthly", false, 3), // Could optimize
-		createTestExpense("exp4", "user1", "dining", "Restaurants", 800.0, "monthly", false, 2), // High discretionary
-		createTestExpense("exp5", "user1", "shopping", "Clothes", 300.0, "monthly", false, 3),  // High discretionary
-		createTestExpense("exp6", "user1", "transportation", "Uber", 200.0, "monthly", false, 2), // Could reduce
+		createTestExpense("exp1", "user1", "housing", "Rent", 1500.0, "monthly", true, 1),     // Necessary - no optimization
+		createTestExpense("exp2", "user1", "food", "Groceries", 400.0, "monthly", true, 1),    // Necessary - no optimization
+		createTestExpense("exp3", "user1", "streaming", "Netflix", 50.0, "monthly", false, 3), // Should be eliminated 
+		createTestExpense("exp4", "user1", "dining", "Restaurants", 800.0, "monthly", false, 2), // Should be reduced 25%
+		createTestExpense("exp5", "user1", "shopping", "Clothes", 300.0, "monthly", false, 3),  // Should be reduced 30%
+		createTestExpense("exp6", "user1", "transportation", "Uber", 400.0, "monthly", false, 2), // Should be reduced 15%
 	}
 
-	incomes := []domain.Income{
-		createTestIncome("inc1", "user1", "Salary", 5000.0, "monthly", true),
-	}
 
+	// Setup financial summary mock (needed for GetSpendingInsights call chain)
+	summary := createTestFinanceSummary("user1", 5000.0, 3250.0, 0.0, 1750.0)
+	mockFinanceService.On("CalculateFinanceSummary", ctx, "user1").Return(summary, nil)
+	
 	mockFinanceService.On("GetUserExpenses", ctx, "user1").Return(expenses, nil)
-	mockFinanceService.On("GetUserIncomes", ctx, "user1").Return(incomes, nil)
 	// Mock NormalizeToMonthly calls for each expense
 	mockFinanceService.On("NormalizeToMonthly", 1500.0, "monthly").Return(1500.0, nil)
 	mockFinanceService.On("NormalizeToMonthly", 400.0, "monthly").Return(400.0, nil)
 	mockFinanceService.On("NormalizeToMonthly", 50.0, "monthly").Return(50.0, nil)
 	mockFinanceService.On("NormalizeToMonthly", 800.0, "monthly").Return(800.0, nil)
 	mockFinanceService.On("NormalizeToMonthly", 300.0, "monthly").Return(300.0, nil)
-	mockFinanceService.On("NormalizeToMonthly", 200.0, "monthly").Return(200.0, nil)
+	mockFinanceService.On("NormalizeToMonthly", 400.0, "monthly").Return(400.0, nil)
 
 	optimizations, err := analyzer.IdentifyUnnecessaryExpenses(ctx, "user1")
 
@@ -394,12 +399,13 @@ func TestBudgetAnalyzer_IdentifyUnnecessaryExpenses_IncomeError(t *testing.T) {
 		createTestExpense("exp1", "user1", "food", "Groceries", 400.0, "monthly", true, 1),
 	}
 
+	// Set up mocks to fail at CalculateFinanceSummary due to income error
 	mockFinanceService.On("GetUserExpenses", ctx, "user1").Return(expenses, nil)
-	mockFinanceService.On("GetUserIncomes", ctx, "user1").Return([]domain.Income{}, errors.New("database error"))
+	mockFinanceService.On("CalculateFinanceSummary", ctx, "user1").Return(domain.FinanceSummary{}, errors.New("failed to get user incomes: database error"))
 
 	_, err := analyzer.IdentifyUnnecessaryExpenses(ctx, "user1")
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get user income")
+	assert.Contains(t, err.Error(), "failed to get user incomes")
 	mockFinanceService.AssertExpectations(t)
 }

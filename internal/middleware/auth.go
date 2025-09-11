@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
+	"github.com/DuckDHD/BuyOrBye/internal/dtos"
 	"github.com/DuckDHD/BuyOrBye/internal/services"
-	"github.com/DuckDHD/BuyOrBye/internal/types"
 )
 
 // JWTAuthMiddleware provides JWT authentication middleware for Gin
@@ -32,7 +32,7 @@ func (j *JWTAuthMiddleware) RequireAuth() gin.HandlerFunc {
 		// Extract token from Authorization header
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+			c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 				http.StatusUnauthorized,
 				"unauthorized",
 				"Authorization header is required",
@@ -44,7 +44,7 @@ func (j *JWTAuthMiddleware) RequireAuth() gin.HandlerFunc {
 		// Check Bearer token format
 		tokenParts := strings.Split(authHeader, " ")
 		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+			c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 				http.StatusUnauthorized,
 				"unauthorized",
 				"Invalid authorization header format. Expected 'Bearer <token>'",
@@ -56,7 +56,7 @@ func (j *JWTAuthMiddleware) RequireAuth() gin.HandlerFunc {
 		// Extract the actual token
 		tokenString := tokenParts[1]
 		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+			c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 				http.StatusUnauthorized,
 				"unauthorized",
 				"Access token is required",
@@ -81,7 +81,7 @@ func (j *JWTAuthMiddleware) RequireAuth() gin.HandlerFunc {
 				message = "Malformed access token"
 			}
 
-			c.JSON(statusCode, types.NewErrorResponse(
+			c.JSON(statusCode, dtos.NewErrorResponse(
 				statusCode,
 				errorCode,
 				message,
@@ -92,7 +92,7 @@ func (j *JWTAuthMiddleware) RequireAuth() gin.HandlerFunc {
 
 		// Additional validation: Check if token has expired using domain logic
 		if claims.IsExpired() {
-			c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+			c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 				http.StatusUnauthorized,
 				"unauthorized",
 				"Access token has expired",

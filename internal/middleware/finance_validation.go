@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
-	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/internal/dtos"
 )
 
 // ValidateOwnership middleware ensures users can only access their own financial data
@@ -17,7 +17,7 @@ func ValidateOwnership() gin.HandlerFunc {
 		// Get authenticated user ID from context (set by JWT middleware)
 		userID := GetUserID(c)
 		if userID == "" {
-			c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+			c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 				http.StatusUnauthorized,
 				"unauthorized",
 				"Authentication required",
@@ -100,7 +100,7 @@ func ValidateFinancialData() gin.HandlerFunc {
 		// Only validate JSON requests
 		if c.Request.ContentLength > 0 && strings.Contains(c.GetHeader("Content-Type"), "application/json") {
 			if err := c.ShouldBindJSON(&body); err != nil {
-				c.JSON(http.StatusBadRequest, types.NewErrorResponse(
+				c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
 					http.StatusBadRequest,
 					"bad_request",
 					"Invalid JSON format",
@@ -115,7 +115,7 @@ func ValidateFinancialData() gin.HandlerFunc {
 				if value, exists := body[field]; exists {
 					if amount, ok := value.(float64); ok {
 						if amount < 0 {
-							c.JSON(http.StatusBadRequest, types.NewErrorResponse(
+							c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
 								http.StatusBadRequest,
 								"validation_error",
 								field+" must be positive",
@@ -133,7 +133,7 @@ func ValidateFinancialData() gin.HandlerFunc {
 				if value, exists := body[field]; exists {
 					if str, ok := value.(string); ok {
 						if strings.TrimSpace(str) == "" {
-							c.JSON(http.StatusBadRequest, types.NewErrorResponse(
+							c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
 								http.StatusBadRequest,
 								"validation_error",
 								field+" cannot be empty",
@@ -159,7 +159,7 @@ func ValidateUserOwnership(resourceType string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := GetUserID(c)
 		if userID == "" {
-			c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+			c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
 				http.StatusUnauthorized,
 				"unauthorized",
 				"Authentication required",
@@ -170,7 +170,7 @@ func ValidateUserOwnership(resourceType string) gin.HandlerFunc {
 
 		resourceID := c.Param("id")
 		if resourceID == "" {
-			c.JSON(http.StatusBadRequest, types.NewErrorResponse(
+			c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
 				http.StatusBadRequest,
 				"bad_request",
 				"Resource ID is required",
@@ -195,7 +195,7 @@ func ValidateRequestLimits() gin.HandlerFunc {
 		const maxRequestSize = 1 << 20 // 1MB
 		
 		if c.Request.ContentLength > maxRequestSize {
-			c.JSON(http.StatusRequestEntityTooLarge, types.NewErrorResponse(
+			c.JSON(http.StatusRequestEntityTooLarge, dtos.NewErrorResponse(
 				http.StatusRequestEntityTooLarge,
 				"payload_too_large",
 				"Request payload too large",

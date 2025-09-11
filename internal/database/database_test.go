@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -13,9 +14,9 @@ import (
 
 func mustStartMySQLContainer() (func(context.Context, ...testcontainers.TerminateOption) error, error) {
 	var (
-		dbName = "database"
-		dbPwd  = "password"
-		dbUser = "user"
+		dbName = "testdb"
+		dbPwd  = "testpassword"
+		dbUser = "testuser"
 	)
 
 	dbContainer, err := mysql.Run(context.Background(),
@@ -29,10 +30,6 @@ func mustStartMySQLContainer() (func(context.Context, ...testcontainers.Terminat
 		return nil, err
 	}
 
-	dbname = dbName
-	password = dbPwd
-	username = dbUser
-
 	dbHost, err := dbContainer.Host(context.Background())
 	if err != nil {
 		return dbContainer.Terminate, err
@@ -43,8 +40,12 @@ func mustStartMySQLContainer() (func(context.Context, ...testcontainers.Terminat
 		return dbContainer.Terminate, err
 	}
 
-	host = dbHost
-	port = dbPort.Port()
+	// Set environment variables for GormService
+	os.Setenv("BLUEPRINT_DB_DATABASE", dbName)
+	os.Setenv("BLUEPRINT_DB_PASSWORD", dbPwd)
+	os.Setenv("BLUEPRINT_DB_USERNAME", dbUser)
+	os.Setenv("BLUEPRINT_DB_HOST", dbHost)
+	os.Setenv("BLUEPRINT_DB_PORT", dbPort.Port())
 
 	return dbContainer.Terminate, err
 }
@@ -62,15 +63,36 @@ func TestMain(m *testing.M) {
 	}
 }
 
-func TestNew(t *testing.T) {
-	srv := New()
+func TestNewGormService(t *testing.T) {
+	srv, err := NewGormService()
+	if err != nil {
+		t.Fatalf("NewGormService() returned error: %v", err)
+	}
 	if srv == nil {
-		t.Fatal("New() returned nil")
+		t.Fatal("NewGormService() returned nil")
+	}
+	defer srv.Close()
+}
+
+func TestGormService_GetDB(t *testing.T) {
+	srv, err := NewGormService()
+	if err != nil {
+		t.Fatalf("NewGormService() returned error: %v", err)
+	}
+	defer srv.Close()
+
+	db := srv.GetDB()
+	if db == nil {
+		t.Fatal("GetDB() returned nil")
 	}
 }
 
-func TestHealth(t *testing.T) {
-	srv := New()
+func TestGormService_Health(t *testing.T) {
+	srv, err := NewGormService()
+	if err != nil {
+		t.Fatalf("NewGormService() returned error: %v", err)
+	}
+	defer srv.Close()
 
 	stats := srv.Health()
 
@@ -79,18 +101,38 @@ func TestHealth(t *testing.T) {
 	}
 
 	if _, ok := stats["error"]; ok {
-		t.Fatalf("expected error not to be present")
+		t.Fatalf("expected error not to be present, but got: %s", stats["error"])
 	}
 
-	if stats["message"] != "It's healthy" {
-		t.Fatalf("expected message to be 'It's healthy', got %s", stats["message"])
+	if stats["message"] != "GORM database connection is healthy" {
+		t.Fatalf("expected message to be 'GORM database connection is healthy', got %s", stats["message"])
+	}
+
+	// Check connection pool stats are present
+	if _, ok := stats["open_connections"]; !ok {
+		t.Fatal("expected open_connections to be present in health stats")
+	}
+	if _, ok := stats["in_use"]; !ok {
+		t.Fatal("expected in_use to be present in health stats")
+	}
+	if _, ok := stats["idle"]; !ok {
+		t.Fatal("expected idle to be present in health stats")
 	}
 }
 
-func TestClose(t *testing.T) {
-	srv := New()
+func TestGormService_Close(t *testing.T) {
+	srv, err := NewGormService()
+	if err != nil {
+		t.Fatalf("NewGormService() returned error: %v", err)
+	}
 
-	if srv.Close() != nil {
-		t.Fatalf("expected Close() to return nil")
+	if err := srv.Close(); err != nil {
+		t.Fatalf("expected Close() to return nil, got: %v", err)
+	}
+
+	// After closing, health check should fail
+	stats := srv.Health()
+	if stats["status"] != "down" {
+		t.Fatalf("expected status to be down after close, got %s", stats["status"])
 	}
 }
