@@ -14,7 +14,7 @@ import (
 	"github.com/DuckDHD/BuyOrBye/internal/models"
 )
 
-func setupExpenseTestDB(t *testing.T) *gorm.DB {
+func setupMedicalExpenseTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 
@@ -130,13 +130,13 @@ func TestMedicalExpenseRepository_GetExpensesByDateRange(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
-	
+
 	// Results should be ordered by date (most recent first)
 	descriptions := make([]string, len(result))
 	for i, expense := range result {
 		descriptions[i] = expense.Description
 	}
-	
+
 	assert.Contains(t, descriptions, "Current month medication")
 	assert.Contains(t, descriptions, "Last month visit")
 	assert.NotContains(t, descriptions, "Two months ago test")
@@ -200,13 +200,13 @@ func TestMedicalExpenseRepository_GetRecurringExpenses_OnlyRecurring(t *testing.
 
 	assert.NoError(t, err)
 	assert.Len(t, recurringExpenses, 2)
-	
+
 	descriptions := make([]string, len(recurringExpenses))
 	for i, expense := range recurringExpenses {
 		descriptions[i] = expense.Description
 		assert.True(t, expense.IsRecurring)
 	}
-	
+
 	assert.Contains(t, descriptions, "Monthly insulin")
 	assert.Contains(t, descriptions, "Weekly therapy")
 	assert.NotContains(t, descriptions, "Emergency visit")
@@ -263,7 +263,7 @@ func TestMedicalExpenseRepository_GetExpensesByCategory(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, medicationExpenses, 2)
-	
+
 	for _, expense := range medicationExpenses {
 		assert.Equal(t, "medication", expense.Category)
 	}

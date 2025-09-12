@@ -34,7 +34,7 @@ func main() {
 		panic("Failed to initialize logger: " + err.Error())
 	}
 	logger := logging.GetLogger()
-	logger.Info("Configuration loaded successfully", 
+	logger.Info("Configuration loaded successfully",
 		logging.WithComponent("main"),
 		zap.String("environment", cfg.Server.Environment),
 		zap.String("config_file", config.GetConfigPath(cfg.Server.Environment)))
@@ -89,14 +89,14 @@ func main() {
 	financeService := services.NewFinanceService(financeRepos)
 	// budgetAnalyzer will be used for future analysis endpoints
 	_ = services.NewBudgetAnalyzer(financeService)
-	
+
 	// Initialize health service
 	healthService := services.NewHealthService(
-		healthProfileRepo, 
-		conditionRepo, 
-		medicalExpenseRepo, 
-		policyRepo, 
-		riskCalculator, 
+		healthProfileRepo,
+		conditionRepo,
+		medicalExpenseRepo,
+		policyRepo,
+		riskCalculator,
 		costAnalyzer,
 	)
 
@@ -113,7 +113,7 @@ func main() {
 
 	// Global middleware with config
 	router.Use(middleware.CORS())
-	
+
 	// Configure logging middleware based on environment
 	middlewareConfig := config.GetMiddlewareConfig(cfg.Server.Environment)
 	loggingConfig := logging.HTTPLoggingConfig{
@@ -130,7 +130,7 @@ func main() {
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"status": "ok",
+			"status":  "ok",
 			"message": "BuyOrBye API is running",
 		})
 	})
@@ -159,41 +159,41 @@ func main() {
 	finance.Use(middleware.ValidateOwnership())
 	{
 		// Income endpoints
-		finance.POST("/income", 
+		finance.POST("/income",
 			middleware.ValidateFinancialData(),
 			middleware.NormalizeFrequency(),
 			financeHandler.AddIncome)
 		finance.GET("/income", financeHandler.GetIncomes)
-		finance.PUT("/income/:id", 
+		finance.PUT("/income/:id",
 			middleware.ValidateUserOwnership("income"),
 			middleware.ValidateFinancialData(),
 			middleware.NormalizeFrequency(),
 			financeHandler.UpdateIncome)
-		finance.DELETE("/income/:id", 
+		finance.DELETE("/income/:id",
 			middleware.ValidateUserOwnership("income"),
 			financeHandler.DeleteIncome)
 
 		// Expense endpoints
-		finance.POST("/expense", 
+		finance.POST("/expense",
 			middleware.ValidateFinancialData(),
 			middleware.NormalizeFrequency(),
 			financeHandler.AddExpense)
 		finance.GET("/expenses", financeHandler.GetExpenses)
-		finance.PUT("/expense/:id", 
+		finance.PUT("/expense/:id",
 			middleware.ValidateUserOwnership("expense"),
 			middleware.ValidateFinancialData(),
 			middleware.NormalizeFrequency(),
 			financeHandler.UpdateExpense)
-		finance.DELETE("/expense/:id", 
+		finance.DELETE("/expense/:id",
 			middleware.ValidateUserOwnership("expense"),
 			financeHandler.DeleteExpense)
 
 		// Loan endpoints
-		finance.POST("/loan", 
+		finance.POST("/loan",
 			middleware.ValidateFinancialData(),
 			financeHandler.AddLoan)
 		finance.GET("/loans", financeHandler.GetLoans)
-		finance.PUT("/loan/:id", 
+		finance.PUT("/loan/:id",
 			middleware.ValidateUserOwnership("loan"),
 			middleware.ValidateFinancialData(),
 			financeHandler.UpdateLoan)
@@ -201,7 +201,7 @@ func main() {
 		// Analysis endpoints
 		finance.GET("/summary", financeHandler.GetFinanceSummary)
 		finance.GET("/affordability", financeHandler.GetAffordability)
-		
+
 		// Add spending insights endpoint when implemented
 		// finance.GET("/insights", financeHandler.GetSpendingInsights)
 	}
@@ -213,28 +213,28 @@ func main() {
 	health.Use(middleware.SanitizeSensitiveData())
 	{
 		// Profile endpoints
-		health.POST("/profile", 
+		health.POST("/profile",
 			middleware.ValidateHealthProfileData(),
 			healthHandler.CreateProfile)
 		health.GET("/profile", healthHandler.GetProfile)
-		health.PUT("/profile", 
+		health.PUT("/profile",
 			middleware.ValidateHealthProfileData(),
 			healthHandler.UpdateProfile)
 
 		// Condition endpoints
-		health.POST("/conditions", 
+		health.POST("/conditions",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.AddCondition)
 		health.GET("/conditions", healthHandler.GetConditions)
-		health.PUT("/conditions/:id", 
+		health.PUT("/conditions/:id",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.UpdateCondition)
-		health.DELETE("/conditions/:id", 
+		health.DELETE("/conditions/:id",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.RemoveCondition)
 
 		// Expense endpoints
-		health.POST("/expenses", 
+		health.POST("/expenses",
 			middleware.ValidateExpenseData(),
 			middleware.ValidateHealthOwnership(),
 			healthHandler.AddExpense)
@@ -242,18 +242,18 @@ func main() {
 		health.GET("/expenses/recurring", healthHandler.GetRecurringExpenses)
 
 		// Insurance endpoints
-		health.POST("/insurance", 
+		health.POST("/insurance",
 			middleware.ValidateInsuranceDates(),
 			middleware.ValidateHealthOwnership(),
 			healthHandler.AddInsurancePolicy)
 		health.GET("/insurance", healthHandler.GetActivePolicies)
-		health.PUT("/insurance/:id/deductible", 
+		health.PUT("/insurance/:id/deductible",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.UpdateDeductibleProgress)
 
 		// Analysis endpoints
 		health.GET("/summary", healthHandler.GetHealthSummary)
-		
+
 		// Future endpoints for health context integration
 		// health.GET("/risk-score", healthHandler.GetRiskScore)
 		// health.GET("/context", healthHandler.GetHealthContext)
@@ -263,7 +263,7 @@ func main() {
 	serverService := config.NewServerService(&cfg.Server)
 	server := serverService.CreateServer(router)
 
-	logger.Info("Starting BuyOrBye server", 
+	logger.Info("Starting BuyOrBye server",
 		logging.WithComponent("main"),
 		zap.String("address", serverService.GetAddress()),
 		zap.String("environment", cfg.Server.Environment))

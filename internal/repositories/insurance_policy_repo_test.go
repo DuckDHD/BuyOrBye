@@ -14,7 +14,7 @@ import (
 	"github.com/DuckDHD/BuyOrBye/internal/models"
 )
 
-func setupPolicyTestDB(t *testing.T) *gorm.DB {
+func setupInsurancePolicyTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 
@@ -39,7 +39,7 @@ func setupPolicyTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestInsurancePolicyRepository_AddPolicy_UniqueNumber(t *testing.T) {
-	db := setupPolicyTestDB(t)
+	db := setupInsurancePolicyTestDB(t)
 	repo := NewInsurancePolicyRepository(db)
 	ctx := context.Background()
 
@@ -88,7 +88,7 @@ func TestInsurancePolicyRepository_AddPolicy_UniqueNumber(t *testing.T) {
 }
 
 func TestInsurancePolicyRepository_GetActivePolicies_FiltersByDate(t *testing.T) {
-	db := setupPolicyTestDB(t)
+	db := setupInsurancePolicyTestDB(t)
 	repo := NewInsurancePolicyRepository(db)
 	ctx := context.Background()
 
@@ -170,7 +170,7 @@ func TestInsurancePolicyRepository_GetActivePolicies_FiltersByDate(t *testing.T)
 }
 
 func TestInsurancePolicyRepository_UpdateDeductibleProgress(t *testing.T) {
-	db := setupPolicyTestDB(t)
+	db := setupInsurancePolicyTestDB(t)
 	repo := NewInsurancePolicyRepository(db)
 	ctx := context.Background()
 
@@ -195,9 +195,9 @@ func TestInsurancePolicyRepository_UpdateDeductibleProgress(t *testing.T) {
 	require.NoError(t, err)
 
 	// Update deductible progress after a new expense
-	expenseAmount := 300.0
-	insurancePaid := 200.0
-	outOfPocketPaid := 100.0
+	// expenseAmount := 300.0
+	// insurancePaid := 200.0
+	// outOfPocketPaid := 100.0
 
 	createdPolicy.DeductibleMet = 500.0      // 200 + 300
 	createdPolicy.OutOfPocketCurrent = 600.0 // 500 + 100
@@ -210,18 +210,18 @@ func TestInsurancePolicyRepository_UpdateDeductibleProgress(t *testing.T) {
 	assert.True(t, updatedPolicy.UpdatedAt.After(createdPolicy.UpdatedAt))
 
 	// Verify values don't exceed maximums
-	createdPolicy.DeductibleMet = 1200.0     // Exceeds deductible of 1000
+	createdPolicy.DeductibleMet = 1200.0      // Exceeds deductible of 1000
 	createdPolicy.OutOfPocketCurrent = 6000.0 // Exceeds max of 5000
 
 	updatedPolicy, err = repo.UpdateDeductibleProgress(ctx, createdPolicy.ID, createdPolicy.DeductibleMet, createdPolicy.OutOfPocketCurrent)
 
 	assert.NoError(t, err)
-	assert.Equal(t, 1000.0, updatedPolicy.DeductibleMet)     // Capped at deductible
+	assert.Equal(t, 1000.0, updatedPolicy.DeductibleMet)      // Capped at deductible
 	assert.Equal(t, 5000.0, updatedPolicy.OutOfPocketCurrent) // Capped at max
 }
 
 func TestInsurancePolicyRepository_GetPolicyByType(t *testing.T) {
-	db := setupPolicyTestDB(t)
+	db := setupInsurancePolicyTestDB(t)
 	repo := NewInsurancePolicyRepository(db)
 	ctx := context.Background()
 
@@ -301,7 +301,7 @@ func TestInsurancePolicyRepository_GetPolicyByType(t *testing.T) {
 }
 
 func TestInsurancePolicyRepository_GetPolicyByNumber(t *testing.T) {
-	db := setupPolicyTestDB(t)
+	db := setupInsurancePolicyTestDB(t)
 	repo := NewInsurancePolicyRepository(db)
 	ctx := context.Background()
 
@@ -338,7 +338,7 @@ func TestInsurancePolicyRepository_GetPolicyByNumber(t *testing.T) {
 }
 
 func TestInsurancePolicyRepository_CalculateCoverageForExpense(t *testing.T) {
-	db := setupPolicyTestDB(t)
+	db := setupInsurancePolicyTestDB(t)
 	repo := NewInsurancePolicyRepository(db)
 	ctx := context.Background()
 
@@ -368,7 +368,7 @@ func TestInsurancePolicyRepository_CalculateCoverageForExpense(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, coverage)
-	
+
 	// With deductible remaining (800), and 80% coverage:
 	// Remaining deductible: 1000 - 200 = 800
 	// Patient pays deductible first: min(500, 800) = 500

@@ -109,7 +109,7 @@ func TestRiskCalculator_CalculateHealthRiskScore(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			score := calculator.CalculateHealthRiskScore(tt.profile, tt.conditions)
-			
+
 			assert.GreaterOrEqual(t, score, tt.expected.min, "Risk score should be at least minimum expected")
 			assert.LessOrEqual(t, score, tt.expected.max, "Risk score should not exceed maximum expected")
 			assert.GreaterOrEqual(t, score, 0, "Risk score should not be negative")
@@ -130,7 +130,7 @@ func TestRiskCalculator_AssessFinancialVulnerability(t *testing.T) {
 	}{
 		{
 			name:        "secure_low_costs",
-			healthCosts: 2400.0, // $2400/year
+			healthCosts: 2400.0,  // $2400/year
 			income:      60000.0, // 4% of income
 			expected:    "secure",
 		},

@@ -426,7 +426,7 @@ func TestExpenseRepository_CalculateUserTotalExpenses_ReturnsCorrectSum(t *testi
 	// Create test expenses for user
 	expense1 := createTestExpense(userID, "housing", "Rent", 1200.00, "monthly", true, 1)
 	expense2 := createTestExpense(userID, "food", "Groceries", 500.00, "monthly", false, 2)
-	
+
 	// Create expense for other user
 	otherExpense := createTestExpense(otherUserID, "housing", "Other Rent", 1500.00, "monthly", true, 1)
 

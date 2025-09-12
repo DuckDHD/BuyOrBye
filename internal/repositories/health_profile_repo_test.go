@@ -15,7 +15,7 @@ import (
 	"github.com/DuckDHD/BuyOrBye/internal/models"
 )
 
-func setupTestDB(t *testing.T) *gorm.DB {
+func setupHealthProfileTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 
@@ -170,7 +170,7 @@ func TestHealthProfileRepository_GetProfile_WithRelations(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, "test-user-123", result.UserID)
-	
+
 	// Verify relations are loaded (this will be checked after implementation)
 	// The specific assertion will depend on how we structure the domain model
 	// to include related entities
@@ -232,13 +232,13 @@ func TestHealthProfileRepository_DeleteProfile_CascadeDeletes(t *testing.T) {
 
 	// Add related records
 	conditionModel := &models.MedicalConditionModel{
-		UserID:    "test-user-123",
-		ProfileID: uint(profileIDUint),
-		Name:      "Test Condition",
-		Category:  "chronic",
-		Severity:  "mild",
+		UserID:        "test-user-123",
+		ProfileID:     uint(profileIDUint),
+		Name:          "Test Condition",
+		Category:      "chronic",
+		Severity:      "mild",
 		DiagnosedDate: time.Now(),
-		IsActive:  true,
+		IsActive:      true,
 	}
 	db.Create(conditionModel)
 
