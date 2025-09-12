@@ -54,6 +54,11 @@ func NewGormService() (*GormService, error) {
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database schema: %w", err)
 	}
+	
+	// Run health domain migrations
+	if err := RunHealthMigrations(db); err != nil {
+		return nil, fmt.Errorf("failed to migrate health schema: %w", err)
+	}
 
 	return &GormService{db: db}, nil
 }

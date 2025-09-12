@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/DuckDHD/BuyOrBye/internal/config"
+	"github.com/DuckDHD/BuyOrBye/internal/database"
 	"github.com/DuckDHD/BuyOrBye/internal/handlers"
 	"github.com/DuckDHD/BuyOrBye/internal/logging"
 	"github.com/DuckDHD/BuyOrBye/internal/middleware"
@@ -46,6 +47,12 @@ func main() {
 
 	db := dbService.GetDB()
 
+	// Run migrations
+	if err := database.RunAllMigrations(db); err != nil {
+		logger.Fatal("Migration failed", logging.WithError(err))
+	}
+	logger.Info("Database migrations completed successfully", logging.WithComponent("main"))
+
 	// Initialize core services with config
 	passwordService := services.NewPasswordService()
 	jwtService, err := services.NewJWTServiceFromConfig(&cfg.Auth)
@@ -66,15 +73,37 @@ func main() {
 	// Create finance repositories aggregate
 	financeRepos := services.NewFinanceRepositories(incomeRepo, expenseRepo, loanRepo, financeSummaryRepo)
 
+	// Initialize health repositories
+	healthProfileRepo := repositories.NewHealthProfileRepository(db)
+	conditionRepo := repositories.NewMedicalConditionRepository(db)
+	medicalExpenseRepo := repositories.NewMedicalExpenseRepository(db)
+	policyRepo := repositories.NewInsurancePolicyRepository(db)
+
+	// Initialize health analysis services
+	riskCalculator := services.NewRiskCalculator()
+	costAnalyzer := services.NewMedicalCostAnalyzer()
+	insuranceEvaluator := services.NewInsuranceEvaluator()
+
 	// Initialize services
 	authService := services.NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	financeService := services.NewFinanceService(financeRepos)
 	// budgetAnalyzer will be used for future analysis endpoints
 	_ = services.NewBudgetAnalyzer(financeService)
+	
+	// Initialize health service
+	healthService := services.NewHealthService(
+		healthProfileRepo, 
+		conditionRepo, 
+		medicalExpenseRepo, 
+		policyRepo, 
+		riskCalculator, 
+		costAnalyzer,
+	)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	financeHandler := handlers.NewFinanceHandler(financeService)
+	healthHandler := handlers.NewHealthHandler(healthService)
 
 	// Initialize middlewares
 	jwtAuthMiddleware := middleware.NewJWTAuthMiddleware(jwtService)
@@ -175,6 +204,59 @@ func main() {
 		
 		// Add spending insights endpoint when implemented
 		// finance.GET("/insights", financeHandler.GetSpendingInsights)
+	}
+
+	// Health routes (all require auth)
+	health := api.Group("/health")
+	health.Use(jwtAuthMiddleware.RequireAuth())
+	health.Use(middleware.ValidateHealthOwnership())
+	health.Use(middleware.SanitizeSensitiveData())
+	{
+		// Profile endpoints
+		health.POST("/profile", 
+			middleware.ValidateHealthProfileData(),
+			healthHandler.CreateProfile)
+		health.GET("/profile", healthHandler.GetProfile)
+		health.PUT("/profile", 
+			middleware.ValidateHealthProfileData(),
+			healthHandler.UpdateProfile)
+
+		// Condition endpoints
+		health.POST("/conditions", 
+			middleware.ValidateHealthOwnership(),
+			healthHandler.AddCondition)
+		health.GET("/conditions", healthHandler.GetConditions)
+		health.PUT("/conditions/:id", 
+			middleware.ValidateHealthOwnership(),
+			healthHandler.UpdateCondition)
+		health.DELETE("/conditions/:id", 
+			middleware.ValidateHealthOwnership(),
+			healthHandler.RemoveCondition)
+
+		// Expense endpoints
+		health.POST("/expenses", 
+			middleware.ValidateExpenseData(),
+			middleware.ValidateHealthOwnership(),
+			healthHandler.AddExpense)
+		health.GET("/expenses", healthHandler.GetExpenses)
+		health.GET("/expenses/recurring", healthHandler.GetRecurringExpenses)
+
+		// Insurance endpoints
+		health.POST("/insurance", 
+			middleware.ValidateInsuranceDates(),
+			middleware.ValidateHealthOwnership(),
+			healthHandler.AddInsurancePolicy)
+		health.GET("/insurance", healthHandler.GetActivePolicies)
+		health.PUT("/insurance/:id/deductible", 
+			middleware.ValidateHealthOwnership(),
+			healthHandler.UpdateDeductibleProgress)
+
+		// Analysis endpoints
+		health.GET("/summary", healthHandler.GetHealthSummary)
+		
+		// Future endpoints for health context integration
+		// health.GET("/risk-score", healthHandler.GetRiskScore)
+		// health.GET("/context", healthHandler.GetHealthContext)
 	}
 
 	// Create HTTP server with config
