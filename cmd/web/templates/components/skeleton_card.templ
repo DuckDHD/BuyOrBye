@@ -1,0 +1,182 @@
+package components
+
+templ SkeletonCard() {
+	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border-l-4 border-gray-200 dark:border-gray-600 p-6 animate-pulse">
+		<!-- Header -->
+		<div class="flex items-start justify-between mb-4">
+			<div class="flex-1">
+				<div class="h-5 bg-gray-200 dark:bg-gray-700 rounded-md w-3/4 mb-2 shimmer"></div>
+				<div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-md w-1/2 shimmer"></div>
+			</div>
+			<div class="ml-4 flex-shrink-0">
+				<div class="h-6 bg-gray-200 dark:bg-gray-700 rounded-full w-20 shimmer"></div>
+			</div>
+		</div>
+
+		<!-- Cost and Category -->
+		<div class="flex items-center justify-between mb-4">
+			<div class="flex items-center space-x-2">
+				<div class="h-8 bg-gray-200 dark:bg-gray-700 rounded-md w-24 shimmer"></div>
+				<div class="h-5 bg-gray-200 dark:bg-gray-700 rounded-full w-16 shimmer"></div>
+			</div>
+			<div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-5 shimmer"></div>
+		</div>
+
+		<!-- Confidence -->
+		<div>
+			<div class="flex items-center justify-between mb-2">
+				<div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16 shimmer"></div>
+				<div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-8 shimmer"></div>
+			</div>
+			<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 shimmer">
+				<div class="h-2 bg-gray-300 dark:bg-gray-600 rounded-full w-3/4 shimmer"></div>
+			</div>
+		</div>
+	</div>
+}
+
+templ SkeletonList(count int) {
+	<div class="space-y-6">
+		for i := 0; i < count; i++ {
+			@SkeletonCard()
+		}
+	</div>
+}
+
+templ SkeletonTable() {
+	<div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden animate-pulse">
+		<!-- Table Header -->
+		<div class="bg-gray-50 dark:bg-gray-700 px-6 py-3 border-b border-gray-200 dark:border-gray-600">
+			<div class="flex space-x-6">
+				<div class="h-4 bg-gray-300 dark:bg-gray-600 rounded w-32 shimmer"></div>
+				<div class="h-4 bg-gray-300 dark:bg-gray-600 rounded w-24 shimmer"></div>
+				<div class="h-4 bg-gray-300 dark:bg-gray-600 rounded w-20 shimmer"></div>
+				<div class="h-4 bg-gray-300 dark:bg-gray-600 rounded w-28 shimmer"></div>
+				<div class="h-4 bg-gray-300 dark:bg-gray-600 rounded w-16 shimmer"></div>
+			</div>
+		</div>
+
+		<!-- Table Rows -->
+		for i := 0; i < 5; i++ {
+			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<div class="flex space-x-6">
+					<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 shimmer"></div>
+					<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 shimmer"></div>
+					<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20 shimmer"></div>
+					<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-28 shimmer"></div>
+					<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16 shimmer"></div>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+templ SkeletonStats() {
+	<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 animate-pulse">
+		for i := 0; i < 4; i++ {
+			<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+				<div class="p-5">
+					<div class="flex items-center">
+						<div class="flex-shrink-0">
+							<div class="h-6 w-6 bg-gray-200 dark:bg-gray-700 rounded shimmer"></div>
+						</div>
+						<div class="ml-5 w-0 flex-1">
+							<div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20 mb-2 shimmer"></div>
+							<div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-16 shimmer"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+templ SkeletonProfile() {
+	<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 animate-pulse">
+		<div class="flex items-center space-x-6">
+			<!-- Avatar -->
+			<div class="h-24 w-24 bg-gray-200 dark:bg-gray-700 rounded-full shimmer"></div>
+			
+			<!-- User Info -->
+			<div class="flex-1">
+				<div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-40 mb-2 shimmer"></div>
+				<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-56 mb-4 shimmer"></div>
+				<div class="flex space-x-4">
+					<div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-20 shimmer"></div>
+					<div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-24 shimmer"></div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- Additional Info -->
+		<div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+			for i := 0; i < 4; i++ {
+				<div>
+					<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2 shimmer"></div>
+					<div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-32 shimmer"></div>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ SkeletonChart() {
+	<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 animate-pulse">
+		<!-- Chart Title -->
+		<div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-6 shimmer"></div>
+		
+		<!-- Chart Area -->
+		<div class="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg shimmer flex items-end justify-center space-x-2 p-4">
+			for i := 0; i < 7; i++ {
+				<div 
+					class="bg-gray-300 dark:bg-gray-600 rounded-t shimmer"
+					style={ "height: " + getRandomHeight(i) + "%; width: 32px;" }
+				></div>
+			}
+		</div>
+		
+		<!-- Chart Legend -->
+		<div class="mt-4 flex justify-center space-x-6">
+			for i := 0; i < 3; i++ {
+				<div class="flex items-center space-x-2">
+					<div class="h-3 w-3 bg-gray-200 dark:bg-gray-700 rounded-full shimmer"></div>
+					<div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16 shimmer"></div>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ SkeletonForm() {
+	<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 animate-pulse">
+		<div class="space-y-6">
+			for i := 0; i < 4; i++ {
+				<div>
+					<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2 shimmer"></div>
+					<div class="h-10 bg-gray-200 dark:bg-gray-700 rounded-md w-full shimmer"></div>
+				</div>
+			}
+			
+			<!-- Textarea field -->
+			<div>
+				<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2 shimmer"></div>
+				<div class="h-24 bg-gray-200 dark:bg-gray-700 rounded-md w-full shimmer"></div>
+			</div>
+			
+			<!-- Buttons -->
+			<div class="flex justify-end space-x-3 pt-6">
+				<div class="h-10 bg-gray-200 dark:bg-gray-700 rounded w-20 shimmer"></div>
+				<div class="h-10 bg-gray-200 dark:bg-gray-700 rounded w-24 shimmer"></div>
+			</div>
+		</div>
+	</div>
+}
+
+func getRandomHeight(index int) string {
+	heights := []string{"30", "60", "45", "80", "35", "70", "55"}
+	if index < len(heights) {
+		return heights[index]
+	}
+	return "50"
+}
+

@@ -1,0 +1,336 @@
+package components
+
+templ ErrorBanner(message, type_attr, id string) {
+	<div 
+		class={ "rounded-md p-4 mb-4 border transition-all duration-500 ease-out " + getBannerClasses(type_attr) }
+		x-data="{ show: true, dismissed: false }"
+		x-show="show && !dismissed"
+		x-transition:enter="transition ease-out duration-300"
+		x-transition:enter-start="opacity-0 transform -translate-y-2"
+		x-transition:enter-end="opacity-100 transform translate-y-0"
+		x-transition:leave="transition ease-in duration-200"
+		x-transition:leave-start="opacity-100 transform translate-y-0"
+		x-transition:leave-end="opacity-0 transform -translate-y-2"
+		x-init="setTimeout(() => { show = false }, 8000)"
+		id={ id }
+		role="alert"
+	>
+		<div class="flex">
+			<div class="flex-shrink-0">
+				@BannerIcon(type_attr)
+			</div>
+			<div class="ml-3 flex-1">
+				<p class={ "text-sm font-medium " + getTextColor(type_attr) }>
+					{ message }
+				</p>
+			</div>
+			<div class="ml-auto pl-3">
+				<div class="-mx-1.5 -my-1.5">
+					<button 
+						type="button" 
+						class={ "inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors " + getButtonClasses(type_attr) }
+						@click="dismissed = true"
+						aria-label="Dismiss"
+					>
+						<span class="sr-only">Dismiss</span>
+						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+							<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+						</svg>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ ErrorBannerWithAction(message, type_attr, id, actionText, actionHref string) {
+	<div 
+		class={ "rounded-md p-4 mb-4 border transition-all duration-500 ease-out " + getBannerClasses(type_attr) }
+		x-data="{ show: true, dismissed: false }"
+		x-show="show && !dismissed"
+		x-transition:enter="transition ease-out duration-300"
+		x-transition:enter-start="opacity-0 transform -translate-y-2"
+		x-transition:enter-end="opacity-100 transform translate-y-0"
+		x-transition:leave="transition ease-in duration-200"
+		x-transition:leave-start="opacity-100 transform translate-y-0"
+		x-transition:leave-end="opacity-0 transform -translate-y-2"
+		x-init="setTimeout(() => { show = false }, 10000)"
+		id={ id }
+		role="alert"
+	>
+		<div class="flex">
+			<div class="flex-shrink-0">
+				@BannerIcon(type_attr)
+			</div>
+			<div class="ml-3 flex-1">
+				<div class={ "text-sm font-medium " + getTextColor(type_attr) }>
+					<p class="mb-2">{ message }</p>
+					if actionText != "" && actionHref != "" {
+						<div class="mt-3">
+							<a 
+								href={ templ.URL(actionHref) }
+								class={ "text-sm font-medium underline hover:no-underline transition-all " + getLinkColor(type_attr) }
+								hx-boost="true"
+							>
+								{ actionText }
+							</a>
+						</div>
+					}
+				</div>
+			</div>
+			<div class="ml-auto pl-3">
+				<div class="-mx-1.5 -my-1.5">
+					<button 
+						type="button" 
+						class={ "inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors " + getButtonClasses(type_attr) }
+						@click="dismissed = true"
+						aria-label="Dismiss"
+					>
+						<span class="sr-only">Dismiss</span>
+						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+							<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+						</svg>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ BannerIcon(type_attr string) {
+	switch type_attr {
+		case "error":
+			<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+				<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/>
+			</svg>
+		case "warning":
+			<svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+				<path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+			</svg>
+		case "success":
+			<svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+				<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.53L8.53 10.53a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/>
+			</svg>
+		case "info":
+			<svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+				<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/>
+			</svg>
+		default:
+			<svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+				<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/>
+			</svg>
+	}
+}
+
+// Validation error banner
+templ ValidationErrorBanner(errors []string) {
+	if len(errors) > 0 {
+		<div 
+			class="rounded-md bg-red-50 dark:bg-red-900/20 p-4 mb-4 border border-red-200 dark:border-red-800"
+			x-data="{ show: true }"
+			x-show="show"
+			x-transition:enter="transition ease-out duration-300"
+			x-transition:enter-start="opacity-0 transform -translate-y-2"
+			x-transition:enter-end="opacity-100 transform translate-y-0"
+			role="alert"
+		>
+			<div class="flex">
+				<div class="flex-shrink-0">
+					<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/>
+					</svg>
+				</div>
+				<div class="ml-3 flex-1">
+					<h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+						if len(errors) == 1 {
+							There was 1 error with your submission
+						} else {
+							There were { fmt.Sprintf("%d", len(errors)) } errors with your submission
+						}
+					</h3>
+					<div class="mt-2 text-sm text-red-700 dark:text-red-300">
+						<ul class="list-disc pl-5 space-y-1">
+							for _, error := range errors {
+								<li>{ error }</li>
+							}
+						</ul>
+					</div>
+				</div>
+				<div class="ml-auto pl-3">
+					<div class="-mx-1.5 -my-1.5">
+						<button 
+							type="button" 
+							class="inline-flex rounded-md bg-red-50 dark:bg-red-900/20 p-1.5 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+							@click="show = false"
+							aria-label="Dismiss"
+						>
+							<span class="sr-only">Dismiss</span>
+							<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+								<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+							</svg>
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+}
+
+// System status banner
+templ SystemStatusBanner(status, message string) {
+	<div 
+		class={ "rounded-md p-4 mb-4 border " + getSystemStatusClasses(status) }
+		x-data="{ show: true }"
+		x-show="show"
+		x-transition:enter="transition ease-out duration-300"
+		x-transition:enter-start="opacity-0 transform -translate-y-2"
+		x-transition:enter-end="opacity-100 transform translate-y-0"
+		role="banner"
+	>
+		<div class="flex">
+			<div class="flex-shrink-0">
+				@SystemStatusIcon(status)
+			</div>
+			<div class="ml-3 flex-1">
+				<p class={ "text-sm font-medium " + getSystemStatusTextColor(status) }>
+					{ message }
+				</p>
+			</div>
+			if status != "maintenance" {
+				<div class="ml-auto pl-3">
+					<div class="-mx-1.5 -my-1.5">
+						<button 
+							type="button" 
+							class={ "inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors " + getSystemStatusButtonClasses(status) }
+							@click="show = false"
+							aria-label="Dismiss"
+						>
+							<span class="sr-only">Dismiss</span>
+							<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+								<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+							</svg>
+						</button>
+					</div>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ SystemStatusIcon(status string) {
+	switch status {
+		case "operational":
+			<svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+				<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.53L8.53 10.53a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/>
+			</svg>
+		case "degraded":
+			<svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+				<path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+			</svg>
+		case "maintenance":
+			<svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+				<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd"/>
+			</svg>
+		default:
+			<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+				<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/>
+			</svg>
+	}
+}
+
+func getBannerClasses(type_attr string) string {
+	switch type_attr {
+	case "error":
+		return "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+	case "warning":
+		return "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"
+	case "success":
+		return "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+	case "info":
+		return "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+	default:
+		return "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+	}
+}
+
+func getTextColor(type_attr string) string {
+	switch type_attr {
+	case "error":
+		return "text-red-800 dark:text-red-200"
+	case "warning":
+		return "text-yellow-800 dark:text-yellow-200"
+	case "success":
+		return "text-green-800 dark:text-green-200"
+	case "info":
+		return "text-blue-800 dark:text-blue-200"
+	default:
+		return "text-blue-800 dark:text-blue-200"
+	}
+}
+
+func getLinkColor(type_attr string) string {
+	switch type_attr {
+	case "error":
+		return "text-red-900 dark:text-red-100"
+	case "warning":
+		return "text-yellow-900 dark:text-yellow-100"
+	case "success":
+		return "text-green-900 dark:text-green-100"
+	case "info":
+		return "text-blue-900 dark:text-blue-100"
+	default:
+		return "text-blue-900 dark:text-blue-100"
+	}
+}
+
+func getButtonClasses(type_attr string) string {
+	switch type_attr {
+	case "error":
+		return "bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 focus:ring-red-500"
+	case "warning":
+		return "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 focus:ring-yellow-500"
+	case "success":
+		return "bg-green-50 dark:bg-green-900/20 text-green-500 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 focus:ring-green-500"
+	case "info":
+		return "bg-blue-50 dark:bg-blue-900/20 text-blue-500 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 focus:ring-blue-500"
+	default:
+		return "bg-blue-50 dark:bg-blue-900/20 text-blue-500 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 focus:ring-blue-500"
+	}
+}
+
+func getSystemStatusClasses(status string) string {
+	switch status {
+	case "operational":
+		return "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+	case "degraded":
+		return "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"
+	case "maintenance":
+		return "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+	default:
+		return "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+	}
+}
+
+func getSystemStatusTextColor(status string) string {
+	switch status {
+	case "operational":
+		return "text-green-800 dark:text-green-200"
+	case "degraded":
+		return "text-yellow-800 dark:text-yellow-200"
+	case "maintenance":
+		return "text-blue-800 dark:text-blue-200"
+	default:
+		return "text-red-800 dark:text-red-200"
+	}
+}
+
+func getSystemStatusButtonClasses(status string) string {
+	switch status {
+	case "operational":
+		return "bg-green-50 dark:bg-green-900/20 text-green-500 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 focus:ring-green-500"
+	case "degraded":
+		return "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 focus:ring-yellow-500"
+	default:
+		return "bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 focus:ring-red-500"
+	}
+}

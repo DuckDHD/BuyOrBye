@@ -32,7 +32,7 @@ func setupHealthProfileTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestHealthProfileRepository_CreateProfile_Success(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupHealthProfileTestDB(t)
 	repo := NewHealthProfileRepository(db)
 	ctx := context.Background()
 
@@ -60,7 +60,7 @@ func TestHealthProfileRepository_CreateProfile_Success(t *testing.T) {
 }
 
 func TestHealthProfileRepository_CreateProfile_DuplicateUserFails(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupHealthProfileTestDB(t)
 	repo := NewHealthProfileRepository(db)
 	ctx := context.Background()
 
@@ -93,7 +93,7 @@ func TestHealthProfileRepository_CreateProfile_DuplicateUserFails(t *testing.T) 
 }
 
 func TestHealthProfileRepository_GetProfile_WithRelations(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupHealthProfileTestDB(t)
 	repo := NewHealthProfileRepository(db)
 	ctx := context.Background()
 
@@ -177,7 +177,7 @@ func TestHealthProfileRepository_GetProfile_WithRelations(t *testing.T) {
 }
 
 func TestHealthProfileRepository_UpdateProfile_Success(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupHealthProfileTestDB(t)
 	repo := NewHealthProfileRepository(db)
 	ctx := context.Background()
 
@@ -209,7 +209,7 @@ func TestHealthProfileRepository_UpdateProfile_Success(t *testing.T) {
 }
 
 func TestHealthProfileRepository_DeleteProfile_CascadeDeletes(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupHealthProfileTestDB(t)
 	repo := NewHealthProfileRepository(db)
 	ctx := context.Background()
 
@@ -291,7 +291,7 @@ func TestHealthProfileRepository_DeleteProfile_CascadeDeletes(t *testing.T) {
 }
 
 func TestHealthProfileRepository_GetByID_NotFound(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupHealthProfileTestDB(t)
 	repo := NewHealthProfileRepository(db)
 	ctx := context.Background()
 
@@ -301,7 +301,7 @@ func TestHealthProfileRepository_GetByID_NotFound(t *testing.T) {
 }
 
 func TestHealthProfileRepository_GetByUserID_NotFound(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupHealthProfileTestDB(t)
 	repo := NewHealthProfileRepository(db)
 	ctx := context.Background()
 

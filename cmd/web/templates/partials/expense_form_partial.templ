@@ -1,0 +1,414 @@
+package partials
+
+import (
+	"fmt"
+	"github.com/a-h/templ"
+)
+
+templ ExpenseFormPartial(categories []string, expense *ExpenseFormDTO) {
+	<div class="p-6" x-data="expenseForm()" x-init="initForm()">
+		<form 
+			hx-post="/finance/expense"
+			hx-target="#expense-form-container"
+			hx-swap="innerHTML"
+			hx-indicator="#expense-submit-spinner"
+			@submit.prevent="submitForm"
+		>
+			<div class="space-y-6">
+				<!-- Form Header -->
+				<div class="flex items-center justify-between">
+					<h3 class="text-lg font-medium text-gray-900 dark:text-white">
+						if expense.ID != "" {
+							Edit Expense
+						} else {
+							Add New Expense
+						}
+					</h3>
+					<button 
+						type="button" 
+						class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+						@click="closeModal()"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+						</svg>
+					</button>
+				</div>
+
+				<!-- Expense Name -->
+				<div>
+					<label for="expense-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						Expense Name <span class="text-red-500">*</span>
+					</label>
+					<input 
+						id="expense-name"
+						name="name"
+						type="text" 
+						x-model="form.name"
+						class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+						placeholder="e.g., Rent, Groceries, Gas"
+						required
+					/>
+					<div x-show="errors.name" x-text="errors.name" class="mt-1 text-sm text-red-600 dark:text-red-400"></div>
+				</div>
+
+				<!-- Category Selection -->
+				<div>
+					<label for="expense-category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						Category <span class="text-red-500">*</span>
+					</label>
+					<div class="relative">
+						<select 
+							id="expense-category"
+							name="category"
+							x-model="form.category"
+							class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+							required
+						>
+							<option value="">Select a category</option>
+							for _, category := range categories {
+								<option value={ category }>{ category }</option>
+							}
+							<option value="other">Other</option>
+						</select>
+						<div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+							<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+							</svg>
+						</div>
+					</div>
+					<div x-show="errors.category" x-text="errors.category" class="mt-1 text-sm text-red-600 dark:text-red-400"></div>
+				</div>
+
+				<!-- Amount Input with Currency Formatting -->
+				<div>
+					<label for="expense-amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						Amount <span class="text-red-500">*</span>
+					</label>
+					<div class="relative rounded-md shadow-sm">
+						<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+							<span class="text-gray-500 sm:text-sm">$</span>
+						</div>
+						<input 
+							id="expense-amount"
+							name="amount"
+							type="text"
+							x-model="form.displayAmount"
+							@input="formatAmount($event.target.value)"
+							@blur="validateAmount()"
+							class="block w-full pl-7 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+							placeholder="0.00"
+							required
+						/>
+					</div>
+					<div x-show="errors.amount" x-text="errors.amount" class="mt-1 text-sm text-red-600 dark:text-red-400"></div>
+					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+						Enter amount in dollars (e.g., 150.75)
+					</p>
+				</div>
+
+				<!-- Frequency Selector -->
+				<div>
+					<label for="expense-frequency" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						Frequency <span class="text-red-500">*</span>
+					</label>
+					<div class="grid grid-cols-2 gap-3">
+						<button 
+							type="button"
+							class="flex items-center justify-center px-4 py-2 border rounded-md text-sm font-medium transition-colors"
+							:class="form.frequency === 'weekly' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+							@click="form.frequency = 'weekly'; updateMonthlyAmount()"
+						>
+							<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+							</svg>
+							Weekly
+						</button>
+						<button 
+							type="button"
+							class="flex items-center justify-center px-4 py-2 border rounded-md text-sm font-medium transition-colors"
+							:class="form.frequency === 'biweekly' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+							@click="form.frequency = 'biweekly'; updateMonthlyAmount()"
+						>
+							<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+							</svg>
+							Bi-weekly
+						</button>
+						<button 
+							type="button"
+							class="flex items-center justify-center px-4 py-2 border rounded-md text-sm font-medium transition-colors"
+							:class="form.frequency === 'monthly' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+							@click="form.frequency = 'monthly'; updateMonthlyAmount()"
+						>
+							<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+							</svg>
+							Monthly
+						</button>
+						<button 
+							type="button"
+							class="flex items-center justify-center px-4 py-2 border rounded-md text-sm font-medium transition-colors"
+							:class="form.frequency === 'yearly' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+							@click="form.frequency = 'yearly'; updateMonthlyAmount()"
+						>
+							<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+							</svg>
+							Yearly
+						</button>
+					</div>
+					<input type="hidden" name="frequency" x-model="form.frequency" required/>
+					<div x-show="errors.frequency" x-text="errors.frequency" class="mt-1 text-sm text-red-600 dark:text-red-400"></div>
+				</div>
+
+				<!-- Monthly Amount Display -->
+				<div x-show="form.amount > 0" class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+					<div class="flex items-center">
+						<div class="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-3">
+							<svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+							</svg>
+						</div>
+						<div>
+							<div class="text-sm font-medium text-blue-900 dark:text-blue-300">
+								Monthly Impact
+							</div>
+							<div class="text-lg font-bold text-blue-600 dark:text-blue-400" x-text="formatCurrency(monthlyAmount)">
+								$0.00
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Description (Optional) -->
+				<div>
+					<label for="expense-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						Description <span class="text-xs text-gray-500">(Optional)</span>
+					</label>
+					<textarea 
+						id="expense-description"
+						name="description"
+						x-model="form.description"
+						rows="3"
+						class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors resize-none"
+						placeholder="Additional details about this expense..."
+					></textarea>
+				</div>
+			</div>
+
+			<!-- Form Actions -->
+			<div class="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+				<button 
+					type="button"
+					class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+					@click="closeModal()"
+				>
+					Cancel
+				</button>
+				<button 
+					type="submit"
+					class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+					:disabled="isSubmitting"
+				>
+					<span id="expense-submit-spinner" class="htmx-indicator">
+						<svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+					</span>
+					<span class="htmx-indicator-hide">
+						if expense.ID != "" {
+							Update Expense
+						} else {
+							Add Expense
+						}
+					</span>
+				</button>
+			</div>
+
+			<!-- Hidden fields for editing -->
+			if expense.ID != "" {
+				<input type="hidden" name="id" value={ expense.ID }/>
+			}
+			<input type="hidden" name="amount" x-model="form.amount"/>
+		</form>
+	</div>
+
+	<script>
+		function expenseForm() {
+			return {
+				form: {
+					name: '',
+					category: '',
+					amount: 0,
+					displayAmount: '',
+					frequency: 'monthly',
+					description: ''
+				},
+				errors: {},
+				isSubmitting: false,
+				monthlyAmount: 0,
+
+				initForm() {
+					// Initialize with existing data if editing
+					if expense != nil && expense.Name != "" {
+						this.form.name = { templ.JSONString(expense.Name) };
+						this.form.category = { templ.JSONString(expense.Category) };
+						this.form.amount = { expense.Amount };
+						this.form.displayAmount = this.formatCurrency({ expense.Amount });
+						this.form.frequency = { templ.JSONString(expense.Frequency) };
+						this.form.description = { templ.JSONString(expense.Description) };
+						this.updateMonthlyAmount();
+					}
+				},
+
+				formatAmount(value) {
+					// Remove all non-numeric characters except decimal point
+					let cleanValue = value.replace(/[^\d.]/g, '');
+					
+					// Handle multiple decimal points
+					let decimalCount = (cleanValue.match(/\./g) || []).length;
+					if (decimalCount > 1) {
+						let parts = cleanValue.split('.');
+						cleanValue = parts[0] + '.' + parts.slice(1).join('');
+					}
+
+					// Limit to 2 decimal places
+					if (cleanValue.includes('.')) {
+						let parts = cleanValue.split('.');
+						parts[1] = parts[1].substring(0, 2);
+						cleanValue = parts[0] + '.' + parts[1];
+					}
+
+					// Update both display and actual amount
+					this.form.displayAmount = cleanValue;
+					this.form.amount = parseFloat(cleanValue) || 0;
+					this.updateMonthlyAmount();
+					
+					// Clear amount error if value is valid
+					if (this.form.amount > 0) {
+						delete this.errors.amount;
+					}
+				},
+
+				validateAmount() {
+					if (!this.form.amount || this.form.amount <= 0) {
+						this.errors.amount = 'Please enter a valid amount';
+						return false;
+					}
+					if (this.form.amount > 1000000) {
+						this.errors.amount = 'Amount cannot exceed $1,000,000';
+						return false;
+					}
+					delete this.errors.amount;
+					return true;
+				},
+
+				updateMonthlyAmount() {
+					const multipliers = {
+						weekly: 4.33,
+						biweekly: 2.17,
+						monthly: 1,
+						yearly: 1/12
+					};
+					
+					this.monthlyAmount = this.form.amount * (multipliers[this.form.frequency] || 1);
+				},
+
+				formatCurrency(amount) {
+					if (!amount) return '$0.00';
+					return '$' + parseFloat(amount).toFixed(2);
+				},
+
+				validateForm() {
+					this.errors = {};
+					let isValid = true;
+
+					// Required field validations
+					if (!this.form.name.trim()) {
+						this.errors.name = 'Expense name is required';
+						isValid = false;
+					}
+
+					if (!this.form.category) {
+						this.errors.category = 'Category is required';
+						isValid = false;
+					}
+
+					if (!this.validateAmount()) {
+						isValid = false;
+					}
+
+					if (!this.form.frequency) {
+						this.errors.frequency = 'Frequency is required';
+						isValid = false;
+					}
+
+					return isValid;
+				},
+
+				submitForm() {
+					if (!this.validateForm()) {
+						return;
+					}
+
+					this.isSubmitting = true;
+					
+					// Use HTMX to submit the form
+					const formData = new FormData();
+					formData.append('name', this.form.name);
+					formData.append('category', this.form.category);
+					formData.append('amount', this.form.amount);
+					formData.append('frequency', this.form.frequency);
+					formData.append('description', this.form.description);
+					
+					let url, method;
+					if expense != nil && expense.ID != "" {
+						formData.append('id', { templ.JSONString(expense.ID) });
+						url = `/finance/expense/${ templ.JSONString(expense.ID) }`;
+						method = 'PATCH';
+					} else {
+						url = '/finance/expense';
+						method = 'POST';
+					}
+
+					htmx.ajax(method, url, {
+						values: Object.fromEntries(formData),
+						target: '#expenses-list',
+						swap: 'outerHTML'
+					}).then(() => {
+						this.isSubmitting = false;
+						document.dispatchEvent(new CustomEvent('expenseChanged'));
+						this.showToast('Expense saved successfully!', 'success');
+						this.closeModal();
+					}).catch((error) => {
+						this.isSubmitting = false;
+						this.showToast('Failed to save expense', 'error');
+					});
+				},
+
+				closeModal() {
+					const container = document.getElementById('modal-container');
+					container.classList.add('hidden');
+					container.innerHTML = '';
+				},
+
+				showToast(message, type) {
+					document.dispatchEvent(new CustomEvent('show-toast', {
+						detail: { message, type }
+					}));
+				}
+			}
+		}
+	</script>
+}
+
+type ExpenseFormDTO struct {
+	ID          string
+	Name        string
+	Category    string
+	Amount      float64
+	Frequency   string
+	Description string
+}

@@ -1,0 +1,346 @@
+package pages
+
+import (
+	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/partials"
+)
+
+templ FinanceOverviewPage(user *types.UserResponseDTO, csrfToken string) {
+	@layouts.App("Finance Overview", csrfToken, user, "/finance") {
+		<div class="space-y-8" x-data="financeOverview()">
+			<!-- Page Header -->
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Finance Overview</h1>
+					<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+						Manage your income, expenses, and financial health
+					</p>
+				</div>
+				<div class="flex items-center space-x-3">
+					<!-- Export Button -->
+					<button 
+						type="button"
+						class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+						@click="exportFinanceData()"
+					>
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+						</svg>
+						Export Report
+					</button>
+					<!-- Refresh Button -->
+					<button 
+						type="button"
+						class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+						@click="refreshAllSections()"
+					>
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+						</svg>
+						Refresh
+					</button>
+				</div>
+			</div>
+
+			<!-- Financial Summary Cards (Always visible) -->
+			<div 
+				id="finance-summary"
+				class="grid grid-cols-1 lg:grid-cols-3 gap-6"
+				hx-get="/ui/partials/finance/summary"
+				hx-trigger="load"
+				hx-swap="innerHTML"
+				hx-indicator="#summary-loading"
+			>
+				<div id="summary-loading" class="htmx-indicator lg:col-span-3">
+					@components.SkeletonCard()
+					@components.SkeletonCard()
+					@components.SkeletonCard()
+				</div>
+			</div>
+
+			<!-- Main Content Grid -->
+			<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+				<!-- Left Column: Income and Expenses -->
+				<div class="lg:col-span-2 space-y-8">
+					<!-- Income Section -->
+					<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+						<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+							<div class="flex items-center justify-between">
+								<div class="flex items-center">
+									<div class="bg-green-100 dark:bg-green-900/30 p-2 rounded-lg mr-3">
+										<svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+										</svg>
+									</div>
+									<h2 class="text-lg font-medium text-gray-900 dark:text-white">Income Sources</h2>
+								</div>
+								<button 
+									class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+									@click="openAddIncomeModal()"
+								>
+									<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+									</svg>
+									Add Income
+								</button>
+							</div>
+						</div>
+						<div 
+							id="income-list"
+							class="min-h-48"
+							hx-get="/ui/partials/finance/income-list"
+							hx-trigger="load, incomeChanged from:body"
+							hx-swap="innerHTML"
+							hx-indicator="#income-loading"
+						>
+							<div id="income-loading" class="htmx-indicator p-6">
+								@components.SkeletonList(3)
+							</div>
+						</div>
+					</div>
+
+					<!-- Expenses Section -->
+					<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+						<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+							<div class="flex items-center justify-between">
+								<div class="flex items-center">
+									<div class="bg-red-100 dark:bg-red-900/30 p-2 rounded-lg mr-3">
+										<svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+										</svg>
+									</div>
+									<h2 class="text-lg font-medium text-gray-900 dark:text-white">Expenses</h2>
+								</div>
+								<button 
+									class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
+									@click="openAddExpenseModal()"
+								>
+									<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+									</svg>
+									Add Expense
+								</button>
+							</div>
+						</div>
+
+						<!-- Category Tabs -->
+						<div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700">
+							<div class="flex flex-wrap gap-2">
+								<button 
+									class="px-3 py-1 text-sm font-medium rounded-full transition-colors"
+									:class="selectedExpenseCategory === 'all' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+									@click="selectedExpenseCategory = 'all'; loadExpenses()"
+								>
+									All
+								</button>
+								<button 
+									class="px-3 py-1 text-sm font-medium rounded-full transition-colors"
+									:class="selectedExpenseCategory === 'housing' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+									@click="selectedExpenseCategory = 'housing'; loadExpenses()"
+								>
+									Housing
+								</button>
+								<button 
+									class="px-3 py-1 text-sm font-medium rounded-full transition-colors"
+									:class="selectedExpenseCategory === 'food' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+									@click="selectedExpenseCategory = 'food'; loadExpenses()"
+								>
+									Food
+								</button>
+								<button 
+									class="px-3 py-1 text-sm font-medium rounded-full transition-colors"
+									:class="selectedExpenseCategory === 'transport' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+									@click="selectedExpenseCategory = 'transport'; loadExpenses()"
+								>
+									Transport
+								</button>
+								<button 
+									class="px-3 py-1 text-sm font-medium rounded-full transition-colors"
+									:class="selectedExpenseCategory === 'utilities' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+									@click="selectedExpenseCategory = 'utilities'; loadExpenses()"
+								>
+									Utilities
+								</button>
+								<button 
+									class="px-3 py-1 text-sm font-medium rounded-full transition-colors"
+									:class="selectedExpenseCategory === 'entertainment' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+									@click="selectedExpenseCategory = 'entertainment'; loadExpenses()"
+								>
+									Entertainment
+								</button>
+								<button 
+									class="px-3 py-1 text-sm font-medium rounded-full transition-colors"
+									:class="selectedExpenseCategory === 'other' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+									@click="selectedExpenseCategory = 'other'; loadExpenses()"
+								>
+									Other
+								</button>
+							</div>
+						</div>
+
+						<div 
+							id="expenses-list"
+							class="min-h-48"
+							hx-get="/ui/partials/finance/expenses-list"
+							hx-trigger="load, expenseChanged from:body"
+							hx-swap="innerHTML"
+							hx-indicator="#expenses-loading"
+							hx-vals="js:{category: getExpenseCategory()}"
+						>
+							<div id="expenses-loading" class="htmx-indicator p-6">
+								@components.SkeletonList(4)
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Right Column: Loans and Charts -->
+				<div class="space-y-8">
+					<!-- Loans and Debts Section -->
+					<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+						<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+							<div class="flex items-center justify-between">
+								<div class="flex items-center">
+									<div class="bg-yellow-100 dark:bg-yellow-900/30 p-2 rounded-lg mr-3">
+										<svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+										</svg>
+									</div>
+									<h2 class="text-lg font-medium text-gray-900 dark:text-white">Loans & Debts</h2>
+								</div>
+								<button 
+									class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50"
+									@click="openAddLoanModal()"
+								>
+									<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+									</svg>
+									Add Loan
+								</button>
+							</div>
+						</div>
+						<div 
+							id="loans-list"
+							class="min-h-48"
+							hx-get="/ui/partials/finance/loans-list"
+							hx-trigger="load, loanChanged from:body"
+							hx-swap="innerHTML"
+							hx-indicator="#loans-loading"
+						>
+							<div id="loans-loading" class="htmx-indicator p-6">
+								@components.SkeletonList(2)
+							</div>
+						</div>
+					</div>
+
+					<!-- Monthly Chart Section -->
+					<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+						<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+							<h3 class="text-lg font-medium text-gray-900 dark:text-white">Monthly Trends</h3>
+						</div>
+						<div 
+							id="monthly-chart"
+							class="p-6 min-h-64"
+							hx-get="/ui/partials/finance/monthly-chart"
+							hx-trigger="load, financeDataChanged from:body"
+							hx-swap="innerHTML"
+							hx-indicator="#chart-loading"
+						>
+							<div id="chart-loading" class="htmx-indicator flex items-center justify-center min-h-64">
+								<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Modal Container -->
+			<div id="modal-container" class="hidden"></div>
+		</div>
+
+		<script>
+			function financeOverview() {
+				return {
+					selectedExpenseCategory: 'all',
+
+					init() {
+						// Listen for data changes to refresh summary
+						document.addEventListener('incomeChanged', () => {
+							this.refreshSummary();
+						});
+						document.addEventListener('expenseChanged', () => {
+							this.refreshSummary();
+						});
+						document.addEventListener('loanChanged', () => {
+							this.refreshSummary();
+						});
+					},
+
+					refreshSummary() {
+						htmx.trigger('#finance-summary', 'refresh');
+						// Trigger custom event for chart updates
+						document.dispatchEvent(new CustomEvent('financeDataChanged'));
+					},
+
+					refreshAllSections() {
+						htmx.trigger('#finance-summary', 'refresh');
+						htmx.trigger('#income-list', 'refresh');
+						htmx.trigger('#expenses-list', 'refresh');
+						htmx.trigger('#loans-list', 'refresh');
+						htmx.trigger('#monthly-chart', 'refresh');
+					},
+
+					loadExpenses() {
+						htmx.trigger('#expenses-list', 'refresh');
+					},
+
+					getExpenseCategory() {
+						return this.selectedExpenseCategory;
+					},
+
+					exportFinanceData() {
+						// Download financial report
+						window.location.href = '/finance/export?format=csv';
+					},
+
+					openAddIncomeModal() {
+						this.openModal('/ui/modals/add-income');
+					},
+
+					openAddExpenseModal() {
+						this.openModal('/ui/modals/add-expense');
+					},
+
+					openAddLoanModal() {
+						this.openModal('/ui/modals/add-loan');
+					},
+
+					openModal(url) {
+						const container = document.getElementById('modal-container');
+						container.innerHTML = '';
+						container.classList.remove('hidden');
+						
+						htmx.ajax('GET', url, {
+							target: '#modal-container',
+							swap: 'innerHTML'
+						});
+					},
+
+					closeModal() {
+						const container = document.getElementById('modal-container');
+						container.classList.add('hidden');
+						container.innerHTML = '';
+					}
+				}
+			}
+
+			// Global function for HTMX vals
+			function getExpenseCategory() {
+				const component = Alpine.$data(document.querySelector('[x-data*="financeOverview"]'));
+				return component.getExpenseCategory();
+			}
+		</script>
+	}
+}

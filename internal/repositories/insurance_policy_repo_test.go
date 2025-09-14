@@ -195,9 +195,6 @@ func TestInsurancePolicyRepository_UpdateDeductibleProgress(t *testing.T) {
 	require.NoError(t, err)
 
 	// Update deductible progress after a new expense
-	// expenseAmount := 300.0
-	// insurancePaid := 200.0
-	// outOfPocketPaid := 100.0
 
 	createdPolicy.DeductibleMet = 500.0      // 200 + 300
 	createdPolicy.OutOfPocketCurrent = 600.0 // 500 + 100

@@ -1,0 +1,236 @@
+package components
+
+import "github.com/DuckDHD/BuyOrBye/internal/types"
+
+templ DecisionCard(decision *types.DecisionDTO) {
+	<div 
+		class={ "bg-white dark:bg-gray-800 rounded-lg shadow-md border-l-4 p-6 transition-all duration-300 cursor-pointer hover:-translate-y-2 hover:shadow-lg " + getDecisionBorderColor(decision.Decision) }
+		x-data="{ expanded: false }"
+		@click="expanded = !expanded"
+	>
+		<!-- Card Header -->
+		<div class="flex items-start justify-between">
+			<div class="flex-1 min-w-0">
+				<h3 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
+					{ decision.ItemName }
+				</h3>
+				<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+					{ formatDecisionDate(decision.CreatedAt) }
+				</p>
+			</div>
+			<div class="ml-4 flex-shrink-0">
+				@DecisionBadge(decision.Decision, decision.Confidence)
+			</div>
+		</div>
+
+		<!-- Cost Information -->
+		<div class="mt-4 flex items-center justify-between">
+			<div class="flex items-center space-x-2">
+				<span class="text-2xl font-bold text-gray-900 dark:text-white">
+					${ formatCurrency(decision.Cost) }
+				</span>
+				if decision.Category != "" {
+					<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+						{ decision.Category }
+					</span>
+				}
+			</div>
+			<!-- Expand Icon -->
+			<svg 
+				class="w-5 h-5 text-gray-400 transition-transform duration-300"
+				:class="{ 'rotate-180': expanded }"
+				fill="none" 
+				stroke="currentColor" 
+				viewBox="0 0 24 24"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+			</svg>
+		</div>
+
+		<!-- Confidence Score -->
+		<div class="mt-4">
+			<div class="flex items-center justify-between text-sm">
+				<span class="text-gray-500 dark:text-gray-400">Confidence</span>
+				<span class="font-medium text-gray-900 dark:text-white">{ decision.Confidence }%</span>
+			</div>
+			<div class="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+				<div 
+					class={ "h-2 rounded-full transition-all duration-500 " + getConfidenceBarColor(decision.Confidence) }
+					style={ "width: " + decision.Confidence + "%" }
+				></div>
+			</div>
+		</div>
+
+		<!-- Expandable Details Section -->
+		<div 
+			x-show="expanded"
+			x-transition:enter="transition ease-out duration-300"
+			x-transition:enter-start="opacity-0 max-h-0"
+			x-transition:enter-end="opacity-100 max-h-screen"
+			x-transition:leave="transition ease-in duration-200"
+			x-transition:leave-start="opacity-100 max-h-screen"
+			x-transition:leave-end="opacity-0 max-h-0"
+			class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6"
+		>
+			<!-- Reasoning -->
+			if decision.Reasoning != "" {
+				<div class="mb-4">
+					<h4 class="text-sm font-medium text-gray-900 dark:text-white mb-2">AI Reasoning</h4>
+					<p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+						{ decision.Reasoning }
+					</p>
+				</div>
+			}
+
+			<!-- Key Factors -->
+			if len(decision.KeyFactors) > 0 {
+				<div class="mb-4">
+					<h4 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Key Factors</h4>
+					<div class="flex flex-wrap gap-2">
+						for _, factor := range decision.KeyFactors {
+							<span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+								{ factor }
+							</span>
+						}
+					</div>
+				</div>
+			}
+
+			<!-- Alternatives -->
+			if len(decision.Alternatives) > 0 {
+				<div class="mb-4">
+					<h4 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Alternatives Considered</h4>
+					<ul class="space-y-2">
+						for _, alt := range decision.Alternatives {
+							<li class="flex items-start space-x-2">
+								<svg class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+								</svg>
+								<span class="text-sm text-gray-600 dark:text-gray-300">{ alt }</span>
+							</li>
+						}
+					</ul>
+				</div>
+			}
+
+			<!-- Action Buttons -->
+			<div class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
+				<div class="flex space-x-2">
+					<button 
+						type="button"
+						class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+						@click.stop
+					>
+						<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+						</svg>
+						Edit
+					</button>
+					<button 
+						type="button"
+						class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+						@click.stop
+					>
+						<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"></path>
+						</svg>
+						Share
+					</button>
+				</div>
+				<button 
+					type="button"
+					class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 transition-colors"
+					@click.stop
+				>
+					<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+					</svg>
+					Delete
+				</button>
+			</div>
+		</div>
+	</div>
+}
+
+templ DecisionBadge(decision string, confidence string) {
+	<div class={ "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium " + getDecisionBadgeClass(decision) }>
+		<span class={ "w-2 h-2 rounded-full mr-2 " + getDecisionDotColor(decision) }></span>
+		{ decision }
+		if confidence != "" {
+			<span class="ml-2 text-xs opacity-75">
+				({ confidence }%)
+			</span>
+		}
+	</div>
+}
+
+func getDecisionBorderColor(decision string) string {
+	switch decision {
+	case "BUY":
+		return "border-green-500 dark:border-green-400"
+	case "WAIT":
+		return "border-amber-500 dark:border-amber-400"
+	case "BYE":
+		return "border-red-500 dark:border-red-400"
+	default:
+		return "border-gray-300 dark:border-gray-600"
+	}
+}
+
+func getDecisionBadgeClass(decision string) string {
+	switch decision {
+	case "BUY":
+		return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+	case "WAIT":
+		return "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+	case "BYE":
+		return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+	default:
+		return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+	}
+}
+
+func getDecisionDotColor(decision string) string {
+	switch decision {
+	case "BUY":
+		return "bg-green-500"
+	case "WAIT":
+		return "bg-amber-500"
+	case "BYE":
+		return "bg-red-500"
+	default:
+		return "bg-gray-400"
+	}
+}
+
+func getConfidenceBarColor(confidence string) string {
+	// Parse confidence as integer for color determination
+	if confidence == "" {
+		return "bg-gray-400"
+	}
+	
+	// Simple string-based color determination
+	// In a real app, you'd parse the string to int first
+	if len(confidence) >= 2 { // Assume high confidence (>=80)
+		return "bg-green-500"
+	} else if len(confidence) >= 1 { // Assume medium confidence (40-79)
+		return "bg-amber-500"
+	} else { // Low confidence (<40)
+		return "bg-red-500"
+	}
+}
+
+func formatDecisionDate(date string) string {
+	if date == "" {
+		return "No date"
+	}
+	// In a real app, you'd parse and format the date properly
+	return date
+}
+
+func formatCurrency(amount string) string {
+	if amount == "" {
+		return "0.00"
+	}
+	return amount
+}

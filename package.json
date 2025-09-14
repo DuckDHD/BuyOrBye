@@ -1,0 +1,56 @@
+{
+  "name": "buyorbye",
+  "version": "1.0.0",
+  "description": "AI-powered purchase decision platform",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run css:watch\" \"npm run js:watch\"",
+    "build": "npm run css:build && npm run js:build && npm run optimize",
+    "css:build": "tailwindcss -i ./cmd/web/static/css/input.css -o ./cmd/web/static/css/output.css --minify",
+    "css:watch": "tailwindcss -i ./cmd/web/static/css/input.css -o ./cmd/web/static/css/output.css --watch",
+    "js:build": "esbuild cmd/web/static/js/*.js --bundle --minify --outdir=cmd/web/static/dist/js --format=iife --target=es2020",
+    "js:watch": "esbuild cmd/web/static/js/*.js --bundle --outdir=cmd/web/static/dist/js --format=iife --target=es2020 --watch",
+    "optimize": "npm run optimize:images && npm run optimize:icons",
+    "optimize:images": "imagemin cmd/web/static/images/*.{jpg,jpeg,png} --out-dir=cmd/web/static/dist/images --plugin=imagemin-mozjpeg --plugin=imagemin-pngquant",
+    "optimize:icons": "svgo -f cmd/web/static/icons -o cmd/web/static/dist/icons --config svgo.config.js",
+    "clean": "rimraf cmd/web/static/dist cmd/web/static/css/output.css",
+    "lint:css": "stylelint \"cmd/web/static/css/**/*.css\"",
+    "lint:js": "eslint cmd/web/static/js/",
+    "format": "prettier --write \"cmd/web/static/**/*.{js,css,json}\"",
+    "analyze": "npm run analyze:bundle && npm run analyze:css",
+    "analyze:bundle": "esbuild cmd/web/static/js/*.js --bundle --minify --metafile=meta.json --outdir=temp && esbuild --analyze=verbose meta.json && rm -rf temp meta.json",
+    "analyze:css": "tailwindcss -i ./cmd/web/static/css/input.css -o ./temp.css && echo 'CSS size:' && wc -c temp.css && rm temp.css",
+    "serve": "browser-sync start --server --files \"cmd/web/static/dist/**/*\" --startPath \"/\"",
+    "test:assets": "npm run build && echo 'Asset build successful'"
+  },
+  "devDependencies": {
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.13",
+    "browser-sync": "^3.0.2",
+    "concurrently": "^8.2.2",
+    "esbuild": "^0.21.5",
+    "eslint": "^8.57.0",
+    "imagemin": "^8.0.1",
+    "imagemin-cli": "^7.0.0",
+    "imagemin-mozjpeg": "^10.0.0",
+    "imagemin-pngquant": "^9.0.2",
+    "prettier": "^3.3.2",
+    "rimraf": "^5.0.7",
+    "stylelint": "^16.6.1",
+    "stylelint-config-standard": "^36.0.1",
+    "svgo": "^3.3.2",
+    "tailwindcss": "^3.4.4"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

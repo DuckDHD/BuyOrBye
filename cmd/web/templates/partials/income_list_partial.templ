@@ -1,0 +1,323 @@
+package partials
+
+import "fmt"
+
+templ IncomeListPartial(incomes []IncomeItemDTO, total float64) {
+	<div class="overflow-hidden" x-data="incomeList()">
+		if len(incomes) == 0 {
+			<div class="p-12 text-center">
+				<div class="mx-auto h-12 w-12 text-gray-400 mb-4">
+					<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+					</svg>
+				</div>
+				<h3 class="text-sm font-medium text-gray-900 dark:text-white mb-1">No income sources</h3>
+				<p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Add your first income source to get started</p>
+				<button 
+					class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+					@click="$dispatch('open-add-income-modal')"
+				>
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+					</svg>
+					Add Income Source
+				</button>
+			</div>
+		} else {
+			<!-- Income Table -->
+			<div class="overflow-x-auto">
+				<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+					<thead class="bg-gray-50 dark:bg-gray-700">
+						<tr>
+							<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+								Source
+							</th>
+							<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+								Amount
+							</th>
+							<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+								Frequency
+							</th>
+							<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+								Monthly
+							</th>
+							<th scope="col" class="relative px-6 py-3">
+								<span class="sr-only">Actions</span>
+							</th>
+						</tr>
+					</thead>
+					<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+						for _, income := range incomes {
+							<tr 
+								class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+								x-data="{ editing: false, originalData: null }"
+							>
+								<td class="px-6 py-4 whitespace-nowrap">
+									<div x-show="!editing" class="flex items-center">
+										<div class="flex-shrink-0 h-8 w-8">
+											<div class={ "h-8 w-8 rounded-full flex items-center justify-center text-xs font-medium text-white " + getIncomeTypeColor(income.Type) }>
+												{ getIncomeTypeIcon(income.Type) }
+											</div>
+										</div>
+										<div class="ml-4">
+											<div class="text-sm font-medium text-gray-900 dark:text-white">
+												{ income.Name }
+											</div>
+											<div class="text-sm text-gray-500 dark:text-gray-400">
+												{ income.Type }
+											</div>
+										</div>
+									</div>
+									<div x-show="editing" class="space-y-2">
+										<input 
+											type="text" 
+											x-model="editData.name"
+											class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+											placeholder="Income source name"
+										/>
+										<select 
+											x-model="editData.type"
+											class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+										>
+											<option value="salary">Salary</option>
+											<option value="freelance">Freelance</option>
+											<option value="business">Business</option>
+											<option value="investment">Investment</option>
+											<option value="other">Other</option>
+										</select>
+									</div>
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									<div x-show="!editing">
+										<div class="text-sm font-medium text-gray-900 dark:text-white">
+											${ formatCurrency(income.Amount) }
+										</div>
+									</div>
+									<div x-show="editing">
+										<input 
+											type="number" 
+											x-model="editData.amount"
+											step="0.01"
+											class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+											placeholder="0.00"
+										/>
+									</div>
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									<div x-show="!editing">
+										<span class={ "inline-flex px-2 py-1 text-xs font-medium rounded-full " + getFrequencyColor(income.Frequency) }>
+											{ income.Frequency }
+										</span>
+									</div>
+									<div x-show="editing">
+										<select 
+											x-model="editData.frequency"
+											class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+										>
+											<option value="weekly">Weekly</option>
+											<option value="biweekly">Bi-weekly</option>
+											<option value="monthly">Monthly</option>
+											<option value="yearly">Yearly</option>
+										</select>
+									</div>
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									<div class="text-sm text-gray-900 dark:text-white font-medium">
+										${ formatCurrency(income.MonthlyAmount) }
+									</div>
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+									<div x-show="!editing" class="flex items-center justify-end space-x-2">
+										<button 
+											class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+											@click="startEdit({ id: '{ income.ID }', name: '{ income.Name }', type: '{ income.Type }', amount: { income.Amount }, frequency: '{ income.Frequency }' })"
+											title="Edit"
+										>
+											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+											</svg>
+										</button>
+										<button 
+											class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+											@click="confirmDelete('{ income.ID }', '{ income.Name }')"
+											title="Delete"
+										>
+											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+											</svg>
+										</button>
+									</div>
+									<div x-show="editing" class="flex items-center justify-end space-x-2">
+										<button 
+											class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+											@click="saveEdit()"
+											title="Save"
+										>
+											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+											</svg>
+										</button>
+										<button 
+											class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
+											@click="cancelEdit()"
+											title="Cancel"
+										>
+											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+											</svg>
+										</button>
+									</div>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+
+			<!-- Total Section -->
+			<div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-t border-gray-200 dark:border-gray-600">
+				<div class="flex justify-between items-center">
+					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+						Total Monthly Income
+					</div>
+					<div class="text-lg font-bold text-green-600 dark:text-green-400">
+						${ formatCurrency(total) }
+					</div>
+				</div>
+			</div>
+		}
+	</div>
+
+	<script>
+		function incomeList() {
+			return {
+				editData: {},
+
+				startEdit(income) {
+					document.querySelectorAll('[x-data*="editing"]').forEach(el => {
+						Alpine.$data(el).editing = false;
+					});
+					
+					this.editData = { ...income };
+					this.editing = true;
+				},
+
+				cancelEdit() {
+					this.editing = false;
+					this.editData = {};
+				},
+
+				saveEdit() {
+					if (!this.editData.name || !this.editData.amount) {
+						alert('Please fill in all required fields');
+						return;
+					}
+
+					htmx.ajax('PATCH', `/finance/income/${this.editData.id}`, {
+						values: {
+							name: this.editData.name,
+							type: this.editData.type,
+							amount: this.editData.amount,
+							frequency: this.editData.frequency
+						},
+						target: '#income-list',
+						swap: 'outerHTML'
+					}).then(() => {
+						this.editing = false;
+						this.editData = {};
+						document.dispatchEvent(new CustomEvent('incomeChanged'));
+						
+						// Show success toast
+						this.showToast('Income updated successfully', 'success');
+					}).catch(() => {
+						this.showToast('Failed to update income', 'error');
+					});
+				},
+
+				confirmDelete(id, name) {
+					if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+						this.deleteIncome(id);
+					}
+				},
+
+				deleteIncome(id) {
+					htmx.ajax('DELETE', `/finance/income/${id}`, {
+						target: '#income-list',
+						swap: 'outerHTML'
+					}).then(() => {
+						document.dispatchEvent(new CustomEvent('incomeChanged'));
+						this.showToast('Income deleted successfully', 'success');
+					}).catch(() => {
+						this.showToast('Failed to delete income', 'error');
+					});
+				},
+
+				showToast(message, type) {
+					document.dispatchEvent(new CustomEvent('show-toast', {
+						detail: { message, type }
+					}));
+				}
+			}
+		}
+	</script>
+}
+
+type IncomeItemDTO struct {
+	ID            string
+	Name          string
+	Type          string
+	Amount        float64
+	Frequency     string
+	MonthlyAmount float64
+	CreatedAt     string
+	UpdatedAt     string
+}
+
+func formatCurrency(amount float64) string {
+	return fmt.Sprintf("%.2f", amount)
+}
+
+func getIncomeTypeColor(incomeType string) string {
+	switch incomeType {
+	case "salary":
+		return "bg-blue-500"
+	case "freelance":
+		return "bg-green-500"
+	case "business":
+		return "bg-purple-500"
+	case "investment":
+		return "bg-yellow-500"
+	default:
+		return "bg-gray-500"
+	}
+}
+
+func getIncomeTypeIcon(incomeType string) string {
+	switch incomeType {
+	case "salary":
+		return "S"
+	case "freelance":
+		return "F"
+	case "business":
+		return "B"
+	case "investment":
+		return "I"
+	default:
+		return "O"
+	}
+}
+
+func getFrequencyColor(frequency string) string {
+	switch frequency {
+	case "weekly":
+		return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+	case "biweekly":
+		return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+	case "monthly":
+		return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400"
+	case "yearly":
+		return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
+	default:
+		return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+	}
+}

@@ -20,27 +20,27 @@ import (
 )
 
 // MockFinanceService is a mock implementation of FinanceService for testing
-type MockFinanceService struct {
+type MockFinanceServiceInterface struct {
 	mock.Mock
 }
 
 // Income operations
-func (m *MockFinanceService) AddIncome(ctx context.Context, income domain.Income) error {
+func (m *MockFinanceServiceInterface) AddIncome(ctx context.Context, income domain.Income) error {
 	args := m.Called(ctx, income)
 	return args.Error(0)
 }
 
-func (m *MockFinanceService) UpdateIncome(ctx context.Context, income domain.Income) error {
+func (m *MockFinanceServiceInterface) UpdateIncome(ctx context.Context, income domain.Income) error {
 	args := m.Called(ctx, income)
 	return args.Error(0)
 }
 
-func (m *MockFinanceService) DeleteIncome(ctx context.Context, userID, incomeID string) error {
+func (m *MockFinanceServiceInterface) DeleteIncome(ctx context.Context, userID, incomeID string) error {
 	args := m.Called(ctx, userID, incomeID)
 	return args.Error(0)
 }
 
-func (m *MockFinanceService) GetUserIncomes(ctx context.Context, userID string) ([]domain.Income, error) {
+func (m *MockFinanceServiceInterface) GetUserIncomes(ctx context.Context, userID string) ([]domain.Income, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -48,7 +48,7 @@ func (m *MockFinanceService) GetUserIncomes(ctx context.Context, userID string) 
 	return args.Get(0).([]domain.Income), args.Error(1)
 }
 
-func (m *MockFinanceService) GetActiveUserIncomes(ctx context.Context, userID string) ([]domain.Income, error) {
+func (m *MockFinanceServiceInterface) GetActiveUserIncomes(ctx context.Context, userID string) ([]domain.Income, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -57,22 +57,22 @@ func (m *MockFinanceService) GetActiveUserIncomes(ctx context.Context, userID st
 }
 
 // Expense operations
-func (m *MockFinanceService) AddExpense(ctx context.Context, expense domain.Expense) error {
+func (m *MockFinanceServiceInterface) AddExpense(ctx context.Context, expense domain.Expense) error {
 	args := m.Called(ctx, expense)
 	return args.Error(0)
 }
 
-func (m *MockFinanceService) UpdateExpense(ctx context.Context, expense domain.Expense) error {
+func (m *MockFinanceServiceInterface) UpdateExpense(ctx context.Context, expense domain.Expense) error {
 	args := m.Called(ctx, expense)
 	return args.Error(0)
 }
 
-func (m *MockFinanceService) DeleteExpense(ctx context.Context, userID, expenseID string) error {
+func (m *MockFinanceServiceInterface) DeleteExpense(ctx context.Context, userID, expenseID string) error {
 	args := m.Called(ctx, userID, expenseID)
 	return args.Error(0)
 }
 
-func (m *MockFinanceService) GetUserExpenses(ctx context.Context, userID string) ([]domain.Expense, error) {
+func (m *MockFinanceServiceInterface) GetUserExpenses(ctx context.Context, userID string) ([]domain.Expense, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -80,7 +80,7 @@ func (m *MockFinanceService) GetUserExpenses(ctx context.Context, userID string)
 	return args.Get(0).([]domain.Expense), args.Error(1)
 }
 
-func (m *MockFinanceService) GetUserExpensesByCategory(ctx context.Context, userID, category string) ([]domain.Expense, error) {
+func (m *MockFinanceServiceInterface) GetUserExpensesByCategory(ctx context.Context, userID, category string) ([]domain.Expense, error) {
 	args := m.Called(ctx, userID, category)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -89,17 +89,17 @@ func (m *MockFinanceService) GetUserExpensesByCategory(ctx context.Context, user
 }
 
 // Loan operations
-func (m *MockFinanceService) AddLoan(ctx context.Context, loan domain.Loan) error {
+func (m *MockFinanceServiceInterface) AddLoan(ctx context.Context, loan domain.Loan) error {
 	args := m.Called(ctx, loan)
 	return args.Error(0)
 }
 
-func (m *MockFinanceService) UpdateLoan(ctx context.Context, loan domain.Loan) error {
+func (m *MockFinanceServiceInterface) UpdateLoan(ctx context.Context, loan domain.Loan) error {
 	args := m.Called(ctx, loan)
 	return args.Error(0)
 }
 
-func (m *MockFinanceService) GetUserLoans(ctx context.Context, userID string) ([]domain.Loan, error) {
+func (m *MockFinanceServiceInterface) GetUserLoans(ctx context.Context, userID string) ([]domain.Loan, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -107,13 +107,13 @@ func (m *MockFinanceService) GetUserLoans(ctx context.Context, userID string) ([
 	return args.Get(0).([]domain.Loan), args.Error(1)
 }
 
-func (m *MockFinanceService) UpdateLoanBalance(ctx context.Context, userID, loanID string, newBalance float64) error {
+func (m *MockFinanceServiceInterface) UpdateLoanBalance(ctx context.Context, userID, loanID string, newBalance float64) error {
 	args := m.Called(ctx, userID, loanID, newBalance)
 	return args.Error(0)
 }
 
 // Financial analysis
-func (m *MockFinanceService) CalculateFinanceSummary(ctx context.Context, userID string) (domain.FinanceSummary, error) {
+func (m *MockFinanceServiceInterface) CalculateFinanceSummary(ctx context.Context, userID string) (domain.FinanceSummary, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return domain.FinanceSummary{}, args.Error(1)
@@ -121,33 +121,33 @@ func (m *MockFinanceService) CalculateFinanceSummary(ctx context.Context, userID
 	return args.Get(0).(domain.FinanceSummary), args.Error(1)
 }
 
-func (m *MockFinanceService) CalculateDisposableIncome(ctx context.Context, userID string) (float64, error) {
+func (m *MockFinanceServiceInterface) CalculateDisposableIncome(ctx context.Context, userID string) (float64, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).(float64), args.Error(1)
 }
 
-func (m *MockFinanceService) CalculateDebtToIncomeRatio(ctx context.Context, userID string) (float64, error) {
+func (m *MockFinanceServiceInterface) CalculateDebtToIncomeRatio(ctx context.Context, userID string) (float64, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).(float64), args.Error(1)
 }
 
-func (m *MockFinanceService) EvaluateFinancialHealth(ctx context.Context, userID string) (string, error) {
+func (m *MockFinanceServiceInterface) EvaluateFinancialHealth(ctx context.Context, userID string) (string, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).(string), args.Error(1)
 }
 
-func (m *MockFinanceService) GetMaxAffordableAmount(ctx context.Context, userID string) (float64, error) {
+func (m *MockFinanceServiceInterface) GetMaxAffordableAmount(ctx context.Context, userID string) (float64, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).(float64), args.Error(1)
 }
 
 // Helper functions
-func (m *MockFinanceService) NormalizeToMonthly(amount float64, frequency string) (float64, error) {
+func (m *MockFinanceServiceInterface) NormalizeToMonthly(amount float64, frequency string) (float64, error) {
 	args := m.Called(amount, frequency)
 	return args.Get(0).(float64), args.Error(1)
 }
 
-func setupFinanceTestRouter(financeService FinanceService) *gin.Engine {
+func setupFinanceTestRouter(financeService FinanceServiceInterface) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 
@@ -188,7 +188,7 @@ func setupFinanceTestRouter(financeService FinanceService) *gin.Engine {
 	return r
 }
 
-func setupUnauthenticatedTestRouter(financeService FinanceService) *gin.Engine {
+func setupUnauthenticatedTestRouter(financeService FinanceServiceInterface) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 
@@ -258,7 +258,7 @@ func createTestFinanceSummary() domain.FinanceSummary {
 		SavingsRate:         0.107,
 		FinancialHealth:     "Good",
 		BudgetRemaining:     533.29,
-		UpdatedAt:          time.Now(),
+		UpdatedAt:           time.Now(),
 	}
 }
 
@@ -266,7 +266,7 @@ func createTestFinanceSummary() domain.FinanceSummary {
 
 func TestFinanceHandler_AddIncome_Success(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	addIncomeRequest := dtos.AddIncomeDTO{
@@ -305,12 +305,12 @@ func TestFinanceHandler_AddIncome_Success(t *testing.T) {
 
 func TestFinanceHandler_AddIncome_ValidationError(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	addIncomeRequest := dtos.AddIncomeDTO{
-		Source:    "", // Invalid - required field
-		Amount:    -100.00, // Invalid - must be positive
+		Source:    "",        // Invalid - required field
+		Amount:    -100.00,   // Invalid - must be positive
 		Frequency: "invalid", // Invalid - not in allowed values
 	}
 
@@ -341,7 +341,7 @@ func TestFinanceHandler_AddIncome_ValidationError(t *testing.T) {
 
 func TestFinanceHandler_GetIncomes_Success(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	expectedIncomes := []domain.Income{createTestIncome()}
@@ -370,7 +370,7 @@ func TestFinanceHandler_GetIncomes_Success(t *testing.T) {
 
 func TestFinanceHandler_UpdateIncome_OnlyOwner(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	updateIncomeRequest := dtos.UpdateIncomeDTO{
@@ -415,9 +415,9 @@ func TestFinanceHandler_UpdateIncome_ForbiddenAccess(t *testing.T) {
 
 	// Mock GetUserIncomes to return income for different user
 	existingIncome := createTestIncome()
-	existingIncome.ID = "income-456" 
+	existingIncome.ID = "income-456"
 	existingIncome.UserID = "different-user-123" // Different user
-	
+
 	mockFinanceService.On("GetUserIncomes", mock.Anything, "test-user-123").
 		Return([]domain.Income{existingIncome}, nil)
 
@@ -444,7 +444,7 @@ func TestFinanceHandler_UpdateIncome_ForbiddenAccess(t *testing.T) {
 
 func TestFinanceHandler_DeleteIncome_SoftDelete(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	mockFinanceService.On("DeleteIncome", mock.Anything, "test-user-123", "income-123").Return(nil)
@@ -470,7 +470,7 @@ func TestFinanceHandler_DeleteIncome_SoftDelete(t *testing.T) {
 
 func TestFinanceHandler_AddExpense_RequiresAuth(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupUnauthenticatedTestRouter(mockFinanceService) // No auth middleware
 
 	addExpenseRequest := dtos.AddExpenseDTO{
@@ -506,7 +506,7 @@ func TestFinanceHandler_AddExpense_RequiresAuth(t *testing.T) {
 
 func TestFinanceHandler_AddExpense_Success(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	addExpenseRequest := dtos.AddExpenseDTO{
@@ -548,7 +548,7 @@ func TestFinanceHandler_AddExpense_Success(t *testing.T) {
 
 func TestFinanceHandler_GetExpenses_Success(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	expectedExpenses := []domain.Expense{createTestExpense()}
@@ -577,7 +577,7 @@ func TestFinanceHandler_GetExpenses_Success(t *testing.T) {
 
 func TestFinanceHandler_GetExpenses_WithCategoryFilter(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	expectedExpenses := []domain.Expense{createTestExpense()}
@@ -607,7 +607,7 @@ func TestFinanceHandler_GetExpenses_WithCategoryFilter(t *testing.T) {
 
 func TestFinanceHandler_AddLoan_Success(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	addLoanRequest := dtos.AddLoanDTO{
@@ -653,13 +653,13 @@ func TestFinanceHandler_AddLoan_ValidationError(t *testing.T) {
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	addLoanRequest := dtos.AddLoanDTO{
-		Lender:           "", // Required field
+		Lender:           "",             // Required field
 		Type:             "invalid-type", // Must be from allowed values
-		PrincipalAmount:  -1000.00, // Must be positive
-		RemainingBalance: -500.00, // Must be non-negative
-		MonthlyPayment:   0.00, // Must be positive
-		InterestRate:     150.00, // Must be <= 100
-		EndDate:          time.Time{}, // Required field
+		PrincipalAmount:  -1000.00,       // Must be positive
+		RemainingBalance: -500.00,        // Must be non-negative
+		MonthlyPayment:   0.00,           // Must be positive
+		InterestRate:     150.00,         // Must be <= 100
+		EndDate:          time.Time{},    // Required field
 	}
 
 	requestBody, _ := json.Marshal(addLoanRequest)
@@ -928,4 +928,3 @@ func stringPtr(s string) *string {
 func floatPtr(f float64) *float64 {
 	return &f
 }
-

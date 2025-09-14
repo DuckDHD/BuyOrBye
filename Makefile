@@ -81,19 +81,38 @@ air-install:
 		echo "air already installed"; \
 	fi
 
+# Build static assets
+assets-build:
+	@echo "Building static assets..."
+	@$(MKDIR) cmd/web/static/dist/css cmd/web/static/dist/js cmd/web/static/dist/icons cmd/web/static/dist/images 2>/dev/null || true
+	@./$(TAILWIND_BIN) -i cmd/web/static/css/input.css -o cmd/web/static/dist/css/output.css --minify
+	@if command -v npm >/dev/null 2>&1; then \
+		npm run js:build; \
+		npm run optimize:icons; \
+	else \
+		echo "Warning: npm not found, skipping JavaScript bundling"; \
+	fi
+
+# Watch assets for development
+assets-watch: tailwind-install
+	@echo "Watching assets for changes..."
+	@if command -v npm >/dev/null 2>&1; then \
+		npm run dev; \
+	else \
+		./$(TAILWIND_BIN) -i cmd/web/static/css/input.css -o cmd/web/static/css/output.css --watch; \
+	fi
+
 # Build the application
-build: tailwind-install templ-install
+build: tailwind-install templ-install assets-build
 	@echo "Building..."
 	@templ generate
-	@./$(TAILWIND_BIN) -i cmd/web/styles/input.css -o cmd/web/assets/css/output.css
-	@go build -o main$(EXE_EXT) cmd/api/main.go
+	@go build -o main$(EXE_EXT) cmd/app/main.go
 
 # Build for production with optimizations
-build-prod: tailwind-install templ-install
+build-prod: tailwind-install templ-install assets-build
 	@echo "Building for production..."
 	@templ generate
-	@./$(TAILWIND_BIN) -i cmd/web/styles/input.css -o cmd/web/assets/css/output.css --minify
-	@go build -ldflags="-s -w" -o main$(EXE_EXT) cmd/api/main.go
+	@go build -ldflags="-s -w" -o main$(EXE_EXT) cmd/app/main.go
 
 # Run the application
 run:
@@ -121,7 +140,8 @@ itest:
 clean:
 	@echo "Cleaning..."
 	@$(RM) main$(EXE_EXT) 2>/dev/null || true
-	@$(RM) cmd/web/assets/css/output.css 2>/dev/null || true
+	@$(RM) cmd/web/static/css/output.css 2>/dev/null || true
+	@if [ -d "cmd/web/static/dist" ]; then $(RMDIR) cmd/web/static/dist; fi
 	@find . -name "*_templ.go" -type f -delete 2>/dev/null || true
 	@if [ -d "tmp" ]; then $(RMDIR) tmp; fi
 
@@ -187,4 +207,4 @@ info:
 		echo "WSL Environment detected - using Linux binaries"; \
 	fi
 
-.PHONY: all build build-prod run test clean watch dev itest templ-install tailwind-install air-install docker-run docker-down update-tools check-tools install-tools air-init info
+.PHONY: all build build-prod run test clean watch dev itest assets-build assets-watch templ-install tailwind-install air-install docker-run docker-down update-tools check-tools install-tools air-init info

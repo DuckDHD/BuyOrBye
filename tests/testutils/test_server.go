@@ -4,6 +4,7 @@
 package testutils
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DuckDHD/BuyOrBye/internal/database"
+	"github.com/DuckDHD/BuyOrBye/internal/domain"
 	"github.com/DuckDHD/BuyOrBye/internal/handlers"
 	"github.com/DuckDHD/BuyOrBye/internal/logging"
 	"github.com/DuckDHD/BuyOrBye/internal/middleware"
@@ -29,8 +31,10 @@ type TestServer struct {
 	Router         *gin.Engine
 	BaseURL        string
 	GormService    *database.GormService
-	AuthService    services.AuthService
+	AuthService    handlers.AuthService
 	FinanceService services.FinanceService
+	HealthService  services.HealthService
+	DecisionService handlers.DecisionServiceInterface
 }
 
 // NewTestServer creates a new test server instance for integration tests
@@ -59,16 +63,43 @@ func NewTestServer(t *testing.T) *TestServer {
 	loanRepo := repositories.NewLoanRepository(db)
 	financeSummaryRepo := repositories.NewFinanceSummaryRepository()
 	
-	// Create finance repositories aggregate
+	// Initialize health repositories
+	healthProfileRepo := repositories.NewHealthProfileRepository(db)
+	insurancePolicyRepo := repositories.NewInsurancePolicyRepository(db)
+	medicalExpenseRepo := repositories.NewMedicalExpenseRepository(db)
+	
+	// Initialize decision repositories
+	decisionRepo := repositories.NewDecisionRepository(db)
+	
+	// Create repositories aggregates
 	financeRepos := services.NewFinanceRepositories(incomeRepo, expenseRepo, loanRepo, financeSummaryRepo)
+	healthRepos := services.NewHealthRepositories(healthProfileRepo, insurancePolicyRepo, medicalExpenseRepo)
 	
 	// Initialize services
 	authService := services.NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	financeService := services.NewFinanceService(financeRepos)
+	healthService := services.NewHealthService(healthRepos)
+	
+	// Initialize decision service components
+	mockAIClient := NewMockAIClient() // Use a mock AI client for testing
+	promptBuilder := services.NewPromptBuilder()
+	decisionInterpreter := services.NewDecisionInterpreter()
+	
+	// For test purposes, use the legacy decision service
+	decisionService := services.NewDecisionService(
+		&MockLegacyDecisionRepository{repo: decisionRepo},
+		financeService,
+		healthService,
+		mockAIClient,
+		promptBuilder,
+		decisionInterpreter,
+	)
 	
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	financeHandler := handlers.NewFinanceHandler(financeService)
+	healthHandler := handlers.NewHealthHandler(healthService)
+	decisionHandler := handlers.NewDecisionHandler(decisionService)
 	
 	// Initialize middlewares
 	jwtAuthMiddleware := middleware.NewJWTAuthMiddleware(jwtService)
@@ -157,6 +188,46 @@ func NewTestServer(t *testing.T) *TestServer {
 		finance.GET("/affordability", financeHandler.GetAffordability)
 	}
 	
+	// Health routes (all require auth)
+	health := api.Group("/health")
+	health.Use(jwtAuthMiddleware.RequireAuth())
+	health.Use(middleware.ValidateOwnership())
+	{
+		// Health profile endpoints
+		health.POST("/profile", healthHandler.AddHealthProfile)
+		health.GET("/profile", healthHandler.GetHealthProfile)
+		health.PUT("/profile/:id", 
+			middleware.ValidateUserOwnership("health_profile"),
+			healthHandler.UpdateHealthProfile)
+		
+		// Insurance endpoints
+		health.POST("/insurance", healthHandler.AddInsurancePolicy)
+		health.GET("/insurance", healthHandler.GetInsurancePolicies)
+		health.PUT("/insurance/:id", 
+			middleware.ValidateUserOwnership("insurance_policy"),
+			healthHandler.UpdateInsurancePolicy)
+		
+		// Medical expense endpoints
+		health.POST("/expense", healthHandler.AddMedicalExpense)
+		health.GET("/expenses", healthHandler.GetMedicalExpenses)
+		health.PUT("/expense/:id", 
+			middleware.ValidateUserOwnership("medical_expense"),
+			healthHandler.UpdateMedicalExpense)
+		
+		// Analysis endpoints
+		health.GET("/summary", healthHandler.GetHealthSummary)
+		health.GET("/risk-assessment", healthHandler.GetRiskAssessment)
+	}
+	
+	// Decision routes (all require auth)
+	decision := api.Group("/decision")
+	decision.Use(jwtAuthMiddleware.RequireAuth())
+	{
+		decision.POST("/evaluate", decisionHandler.MakeDecision)
+		decision.GET("/history", decisionHandler.GetDecisionHistory)
+		decision.GET("/stats", decisionHandler.GetDecisionStats)
+	}
+	
 	// Create test server
 	server := httptest.NewServer(router)
 	
@@ -167,6 +238,8 @@ func NewTestServer(t *testing.T) *TestServer {
 		GormService:    gormService,
 		AuthService:    authService,
 		FinanceService: financeService,
+		HealthService:  healthService,
+		DecisionService: decisionService,
 	}
 }
 
@@ -244,6 +317,10 @@ func (ts *TestServer) ResetDatabase(t *testing.T) {
 	// List of tables to clear (in dependency order)
 	tables := []string{
 		"refresh_tokens",
+		"decision_records",
+		"medical_expenses",
+		"insurance_policies",
+		"health_profiles",
 		"finance_summaries", 
 		"loans",
 		"expenses", 
@@ -270,4 +347,91 @@ func (ts *TestServer) ResetDatabase(t *testing.T) {
 	// Re-enable foreign key checks
 	err = db.Exec("PRAGMA foreign_keys = ON").Error
 	require.NoError(t, err, "Failed to re-enable foreign key checks")
+}
+
+// Mock implementations for testing
+
+// MockAIClient provides controlled AI responses for testing
+type MockAIClient struct {
+	responses      []domain.AIResponse
+	currentIndex   int
+	shouldTimeout  bool
+	shouldError    bool
+	errorMessage   string
+}
+
+// NewMockAIClient creates a new mock AI client
+func NewMockAIClient() *MockAIClient {
+	return &MockAIClient{
+		responses: make([]domain.AIResponse, 0),
+	}
+}
+
+// GenerateDecision implements the AIClient interface
+func (m *MockAIClient) GenerateDecision(ctx context.Context, prompt domain.AIPrompt) (*domain.AIResponse, error) {
+	if m.shouldTimeout {
+		return nil, fmt.Errorf("context deadline exceeded")
+	}
+
+	if m.shouldError {
+		return nil, fmt.Errorf("openai error: %s", m.errorMessage)
+	}
+
+	// Return default response if no specific response set
+	if len(m.responses) == 0 {
+		return &domain.AIResponse{
+			Decision:   "BUY",
+			Confidence: 0.75,
+			Reasoning:  "Default mock AI decision",
+		}, nil
+	}
+
+	if m.currentIndex >= len(m.responses) {
+		m.currentIndex = 0 // Reset to first response
+	}
+
+	response := m.responses[m.currentIndex]
+	m.currentIndex++
+
+	return &response, nil
+}
+
+// MockLegacyDecisionRepository adapts the new DecisionRepository to the legacy interface
+type MockLegacyDecisionRepository struct {
+	repo services.DecisionRepository
+}
+
+// Save implements the legacy interface
+func (m *MockLegacyDecisionRepository) Save(ctx context.Context, decision domain.DecisionOutcome) error {
+	// Create a dummy intent since the legacy interface expects both
+	intent := domain.PurchaseIntent{
+		ID:       decision.IntentID,
+		UserID:   decision.UserID,
+		ItemName: "Mock Item",
+		ItemCost: 100.0,
+		Category: "other",
+		Urgency:  "medium",
+		Frequency: "one_time",
+	}
+	return m.repo.SaveDecision(ctx, decision, intent)
+}
+
+// GetByIntentID implements the legacy interface
+func (m *MockLegacyDecisionRepository) GetByIntentID(ctx context.Context, intentID string) (*domain.DecisionOutcome, error) {
+	// For testing, we can't easily get by intent ID with the new repository
+	// So we'll return a mock decision for now
+	return &domain.DecisionOutcome{
+		ID:       "mock-decision-1",
+		UserID:   "mock-user",
+		IntentID: intentID,
+		Decision: "BUY",
+		Confidence: 0.8,
+		PrimaryReason: "Mock decision for testing",
+	}, nil
+}
+
+// GetRecentDecisions implements the legacy interface
+func (m *MockLegacyDecisionRepository) GetRecentDecisions(ctx context.Context, userID string, days int) ([]domain.PastDecision, error) {
+	// Return empty slice for testing - real implementation would convert from DecisionOutcome
+	return []domain.PastDecision{}, nil
 }

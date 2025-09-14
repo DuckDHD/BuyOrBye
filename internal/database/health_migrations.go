@@ -30,44 +30,55 @@ func RunHealthMigrations(db *gorm.DB) error {
 
 // createHealthIndexes creates custom composite indexes for health tables
 func createHealthIndexes(db *gorm.DB) error {
-	// Health profiles indexes
-	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_health_profiles_user_active ON health_profiles(user_id, created_at)").Error; err != nil {
-		return fmt.Errorf("failed to create health_profiles user_active index: %w", err)
+	indexes := []struct {
+		name  string
+		query string
+	}{
+		{
+			name:  "idx_health_profiles_user_active",
+			query: "CREATE INDEX idx_health_profiles_user_active ON health_profiles(user_id, created_at)",
+		},
+		{
+			name:  "idx_medical_conditions_user_category_active",
+			query: "CREATE INDEX idx_medical_conditions_user_category_active ON medical_conditions(user_id, category, is_active)",
+		},
+		{
+			name:  "idx_medical_conditions_profile_severity",
+			query: "CREATE INDEX idx_medical_conditions_profile_severity ON medical_conditions(profile_id, severity, is_active)",
+		},
+		{
+			name:  "idx_medical_expenses_user_date_category",
+			query: "CREATE INDEX idx_medical_expenses_user_date_category ON medical_expenses(user_id, date DESC, category)",
+		},
+		{
+			name:  "idx_medical_expenses_profile_recurring",
+			query: "CREATE INDEX idx_medical_expenses_profile_recurring ON medical_expenses(profile_id, is_recurring, frequency)",
+		},
+		{
+			name:  "idx_medical_expenses_amount_covered",
+			query: "CREATE INDEX idx_medical_expenses_amount_covered ON medical_expenses(amount, is_covered, insurance_payment)",
+		},
+		{
+			name:  "idx_insurance_policies_user_active_dates",
+			query: "CREATE INDEX idx_insurance_policies_user_active_dates ON insurance_policies(user_id, is_active, start_date, end_date)",
+		},
+		{
+			name:  "idx_insurance_policies_profile_type_active",
+			query: "CREATE INDEX idx_insurance_policies_profile_type_active ON insurance_policies(profile_id, type, is_active)",
+		},
+		{
+			name:  "idx_insurance_policies_deductible_tracking",
+			query: "CREATE INDEX idx_insurance_policies_deductible_tracking ON insurance_policies(deductible_met, out_of_pocket_current, annual_deductible)",
+		},
 	}
 
-	// Medical conditions indexes  
-	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_medical_conditions_user_category_active ON medical_conditions(user_id, category, is_active)").Error; err != nil {
-		return fmt.Errorf("failed to create medical_conditions composite index: %w", err)
-	}
-	
-	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_medical_conditions_profile_severity ON medical_conditions(profile_id, severity, is_active)").Error; err != nil {
-		return fmt.Errorf("failed to create medical_conditions severity index: %w", err)
-	}
-
-	// Medical expenses indexes
-	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_medical_expenses_user_date_category ON medical_expenses(user_id, date DESC, category)").Error; err != nil {
-		return fmt.Errorf("failed to create medical_expenses date_category index: %w", err)
-	}
-	
-	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_medical_expenses_profile_recurring ON medical_expenses(profile_id, is_recurring, frequency)").Error; err != nil {
-		return fmt.Errorf("failed to create medical_expenses recurring index: %w", err)
-	}
-	
-	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_medical_expenses_amount_covered ON medical_expenses(amount, is_covered, insurance_payment)").Error; err != nil {
-		return fmt.Errorf("failed to create medical_expenses coverage index: %w", err)
-	}
-
-	// Insurance policies indexes
-	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_insurance_policies_user_active_dates ON insurance_policies(user_id, is_active, start_date, end_date)").Error; err != nil {
-		return fmt.Errorf("failed to create insurance_policies active_dates index: %w", err)
-	}
-	
-	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_insurance_policies_profile_type_active ON insurance_policies(profile_id, type, is_active)").Error; err != nil {
-		return fmt.Errorf("failed to create insurance_policies type index: %w", err)
-	}
-	
-	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_insurance_policies_deductible_tracking ON insurance_policies(deductible_met, out_of_pocket_current, annual_deductible)").Error; err != nil {
-		return fmt.Errorf("failed to create insurance_policies tracking index: %w", err)
+	for _, idx := range indexes {
+		if err := db.Exec(idx.query).Error; err != nil {
+			// Ignore errors for existing indexes (MySQL doesn't support IF NOT EXISTS before 8.0.1)
+			if !isIndexExistsError(err) {
+				return fmt.Errorf("failed to create index %s: %w", idx.name, err)
+			}
+		}
 	}
 
 	return nil
@@ -126,6 +137,18 @@ func isConstraintExistsError(err error) bool {
 	return contains(errStr, "Duplicate key name") || 
 		   contains(errStr, "already exists") ||
 		   contains(errStr, "Duplicate entry")
+}
+
+// isIndexExistsError checks if the error is due to index already existing
+func isIndexExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	// MySQL error patterns for existing indexes
+	return contains(errStr, "Duplicate key name") ||
+		   contains(errStr, "already exists") ||
+		   contains(errStr, "Error 1061")
 }
 
 // contains checks if a string contains a substring (case-insensitive)

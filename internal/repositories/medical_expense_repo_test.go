@@ -39,7 +39,7 @@ func setupMedicalExpenseTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestMedicalExpenseRepository_AddExpense_CalculatesOutOfPocket(t *testing.T) {
-	db := setupExpenseTestDB(t)
+	db := setupMedicalExpenseTestDB(t)
 	repo := NewMedicalExpenseRepository(db)
 	ctx := context.Background()
 
@@ -73,7 +73,7 @@ func TestMedicalExpenseRepository_AddExpense_CalculatesOutOfPocket(t *testing.T)
 }
 
 func TestMedicalExpenseRepository_GetExpensesByDateRange(t *testing.T) {
-	db := setupExpenseTestDB(t)
+	db := setupMedicalExpenseTestDB(t)
 	repo := NewMedicalExpenseRepository(db)
 	ctx := context.Background()
 
@@ -144,7 +144,7 @@ func TestMedicalExpenseRepository_GetExpensesByDateRange(t *testing.T) {
 }
 
 func TestMedicalExpenseRepository_GetRecurringExpenses_OnlyRecurring(t *testing.T) {
-	db := setupExpenseTestDB(t)
+	db := setupMedicalExpenseTestDB(t)
 	repo := NewMedicalExpenseRepository(db)
 	ctx := context.Background()
 
@@ -214,7 +214,7 @@ func TestMedicalExpenseRepository_GetRecurringExpenses_OnlyRecurring(t *testing.
 }
 
 func TestMedicalExpenseRepository_GetExpensesByCategory(t *testing.T) {
-	db := setupExpenseTestDB(t)
+	db := setupMedicalExpenseTestDB(t)
 	repo := NewMedicalExpenseRepository(db)
 	ctx := context.Background()
 
@@ -277,7 +277,7 @@ func TestMedicalExpenseRepository_GetExpensesByCategory(t *testing.T) {
 }
 
 func TestMedicalExpenseRepository_CalculateTotalExpenses(t *testing.T) {
-	db := setupExpenseTestDB(t)
+	db := setupMedicalExpenseTestDB(t)
 	repo := NewMedicalExpenseRepository(db)
 	ctx := context.Background()
 
@@ -329,7 +329,7 @@ func TestMedicalExpenseRepository_CalculateTotalExpenses(t *testing.T) {
 }
 
 func TestMedicalExpenseRepository_GetExpensesByFrequency(t *testing.T) {
-	db := setupExpenseTestDB(t)
+	db := setupMedicalExpenseTestDB(t)
 	repo := NewMedicalExpenseRepository(db)
 	ctx := context.Background()
 

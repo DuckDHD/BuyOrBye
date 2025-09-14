@@ -1,0 +1,38 @@
+package shared
+
+templ MetaTags(title, description string) {
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<meta name="description" content={ description }/>
+	<meta name="robots" content="index, follow"/>
+	<meta name="author" content="BuyOrBye"/>
+	<title>{ title } - BuyOrBye</title>
+	
+	<!-- Open Graph -->
+	<meta property="og:title" content={ title + " - BuyOrBye" }/>
+	<meta property="og:description" content={ description }/>
+	<meta property="og:type" content="website"/>
+	<meta property="og:site_name" content="BuyOrBye"/>
+	
+	<!-- Twitter Card -->
+	<meta name="twitter:card" content="summary"/>
+	<meta name="twitter:title" content={ title + " - BuyOrBye" }/>
+	<meta name="twitter:description" content={ description }/>
+}
+
+templ Favicon() {
+	<link rel="icon" type="image/svg+xml" href="/static/favicon.svg"/>
+	<link rel="icon" type="image/png" href="/static/favicon.png"/>
+	<link rel="apple-touch-icon" href="/static/apple-touch-icon.png"/>
+	<link rel="manifest" href="/static/manifest.json"/>
+}
+
+templ CSRFToken(token string) {
+	<meta name="csrf-token" content={ token }/>
+	<script>
+		// Add CSRF token to all HTMX requests
+		document.body.addEventListener('htmx:configRequest', (event) => {
+			event.detail.headers['X-CSRF-Token'] = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+		});
+	</script>
+}

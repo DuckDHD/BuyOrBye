@@ -8,7 +8,7 @@ import (
 
 // FinanceService interface is defined in handlers package following consumer-defined principle
 // This interface is consumed by FinanceHandler in this package
-type FinanceService interface {
+type FinanceServiceInterface interface {
 	// Income operations
 	AddIncome(ctx context.Context, income domain.Income) error
 	UpdateIncome(ctx context.Context, income domain.Income) error
@@ -16,7 +16,7 @@ type FinanceService interface {
 	GetUserIncomes(ctx context.Context, userID string) ([]domain.Income, error)
 	GetActiveUserIncomes(ctx context.Context, userID string) ([]domain.Income, error)
 
-	// Expense operations  
+	// Expense operations
 	AddExpense(ctx context.Context, expense domain.Expense) error
 	UpdateExpense(ctx context.Context, expense domain.Expense) error
 	DeleteExpense(ctx context.Context, userID, expenseID string) error
@@ -38,4 +38,9 @@ type FinanceService interface {
 
 	// Helper functions
 	NormalizeToMonthly(amount float64, frequency string) (float64, error)
+
+	// Additional UI helper methods
+	GetFinanceSummary(userID string) (domain.FinanceSummary, error)
+	GetIncomes(userID string) ([]domain.Income, error)
+	GetExpenseByID(userID string, expenseID uint) (domain.Expense, error)
 }

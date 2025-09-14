@@ -1,0 +1,237 @@
+package pages
+
+import (
+	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/partials"
+)
+
+templ DashboardPage(user *types.UserResponseDTO, csrfToken string) {
+	@layouts.App("Dashboard", csrfToken, user, "/dashboard") {
+		<div class="space-y-6" x-data="dashboardData()">
+			<!-- Welcome Section -->
+			<div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+				<div class="flex items-center justify-between">
+					<div>
+						<h1 class="text-2xl font-bold mb-2">
+							Welcome back, { user.Name }!
+						</h1>
+						<p class="text-blue-100">
+							Make smarter purchase decisions with AI-powered insights.
+						</p>
+						<div class="mt-4 flex items-center text-sm text-blue-200">
+							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+							</svg>
+							Last login: Today at 2:34 PM
+						</div>
+					</div>
+					<div class="hidden md:block">
+						<div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+							<svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+							</svg>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Quick Action Bar -->
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+				<a 
+					href="/decisions/new" 
+					class="flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400"
+					hx-boost="true"
+				>
+					<div class="flex-shrink-0">
+						<div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+							<svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+							</svg>
+						</div>
+					</div>
+					<div class="ml-4">
+						<p class="text-sm font-medium text-gray-900 dark:text-white">New Decision</p>
+						<p class="text-sm text-gray-500 dark:text-gray-400">Get AI insights</p>
+					</div>
+				</a>
+
+				<a 
+					href="/purchases/new" 
+					class="flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-400"
+					hx-boost="true"
+				>
+					<div class="flex-shrink-0">
+						<div class="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+							<svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+							</svg>
+						</div>
+					</div>
+					<div class="ml-4">
+						<p class="text-sm font-medium text-gray-900 dark:text-white">Add Purchase</p>
+						<p class="text-sm text-gray-500 dark:text-gray-400">Track spending</p>
+					</div>
+				</a>
+
+				<a 
+					href="/finance" 
+					class="flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-400"
+					hx-boost="true"
+				>
+					<div class="flex-shrink-0">
+						<div class="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+							<svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+							</svg>
+						</div>
+					</div>
+					<div class="ml-4">
+						<p class="text-sm font-medium text-gray-900 dark:text-white">View Finance</p>
+						<p class="text-sm text-gray-500 dark:text-gray-400">Money insights</p>
+					</div>
+				</a>
+
+				<a 
+					href="/health" 
+					class="flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700 hover:border-red-500 dark:hover:border-red-400"
+					hx-boost="true"
+				>
+					<div class="flex-shrink-0">
+						<div class="w-10 h-10 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+							<svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+							</svg>
+						</div>
+					</div>
+					<div class="ml-4">
+						<p class="text-sm font-medium text-gray-900 dark:text-white">Health Data</p>
+						<p class="text-sm text-gray-500 dark:text-gray-400">Wellness tracking</p>
+					</div>
+				</a>
+			</div>
+
+			<!-- Stats Section - Load Immediately -->
+			<div 
+				hx-get="/ui/partials/dashboard/stats" 
+				hx-trigger="load"
+				hx-swap="outerHTML"
+			>
+				@components.SkeletonStats()
+			</div>
+
+			<!-- Main Content Grid -->
+			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+				<!-- Quick Decision Form -->
+				<div class="lg:col-span-1">
+					@components.Card("Quick Decision") {
+						<div 
+							hx-get="/ui/partials/dashboard/quick-decision" 
+							hx-trigger="load"
+							hx-swap="innerHTML"
+						>
+							@components.SkeletonForm()
+						</div>
+					}
+				</div>
+
+				<!-- Recent Decisions -->
+				<div class="lg:col-span-2">
+					@components.Card("Recent Decisions") {
+						<div 
+							hx-get="/ui/partials/dashboard/recent-decisions" 
+							hx-trigger="load"
+							hx-swap="innerHTML"
+						>
+							@components.SkeletonList(3)
+						</div>
+					}
+				</div>
+			</div>
+
+			<!-- Lazy Loading Section - Below Fold Content -->
+			<div 
+				class="space-y-6"
+				hx-get="/ui/partials/dashboard/below-fold" 
+				hx-trigger="intersect once"
+				hx-swap="innerHTML"
+			>
+				<!-- Financial Summary Skeleton -->
+				<div>
+					<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Financial Summary</h3>
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+						<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse">
+							<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
+							<div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+						</div>
+						<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse">
+							<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2"></div>
+							<div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+						</div>
+						<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse">
+							<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-28 mb-2"></div>
+							<div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+						</div>
+						<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse">
+							<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20 mb-2"></div>
+							<div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Recent Activity Skeleton -->
+				<div>
+					<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Recent Activity</h3>
+					@components.SkeletonList(5)
+				</div>
+			</div>
+
+			<!-- Performance Insights - Lazy Load -->
+			<div 
+				hx-get="/ui/partials/dashboard/insights" 
+				hx-trigger="intersect once threshold:0.1"
+				hx-swap="innerHTML"
+			>
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse">
+					<div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-40 mb-4"></div>
+					<div class="space-y-3">
+						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			function dashboardData() {
+				return {
+					refreshStats() {
+						htmx.trigger('#stats-container', 'refresh');
+					},
+					
+					showNotification(message, type = 'info') {
+						Alpine.store('toast').show(message, type);
+					},
+
+					init() {
+						// Set up periodic stats refresh
+						setInterval(() => {
+							if (document.visibilityState === 'visible') {
+								this.refreshStats();
+							}
+						}, 300000); // 5 minutes
+
+						// Listen for decision completion events
+						document.addEventListener('decision-completed', (event) => {
+							this.showNotification('Decision completed successfully!', 'success');
+							htmx.trigger('#recent-decisions', 'refresh');
+							htmx.trigger('#stats-container', 'refresh');
+						});
+					}
+				}
+			}
+		</script>
+	}
+}

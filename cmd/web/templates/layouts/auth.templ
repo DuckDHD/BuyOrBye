@@ -1,0 +1,48 @@
+package layouts
+
+import "github.com/DuckDHD/BuyOrBye/internal/types"
+
+templ Auth(title string, csrfToken string) {
+	@Base(title, csrfToken) {
+		<div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+			<div class="sm:mx-auto sm:w-full sm:max-w-md">
+				<!-- Logo -->
+				<div class="flex justify-center">
+					<a href="/" class="flex items-center space-x-2">
+						<div class="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+							<span class="text-white font-bold text-lg">B</span>
+						</div>
+						<span class="text-2xl font-bold text-gray-900 dark:text-white">BuyOrBye</span>
+					</a>
+				</div>
+				<h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+					{ title }
+				</h2>
+			</div>
+
+			<div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+				<div class="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10 border dark:border-gray-700">
+					{ children... }
+				</div>
+				
+				<!-- Dark mode toggle -->
+				<div class="mt-4 flex justify-center">
+					<button 
+						onclick="toggleDarkMode()" 
+						class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+						aria-label="Toggle dark mode"
+					>
+						<svg class="w-5 h-5 mr-2 dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+						</svg>
+						<svg class="w-5 h-5 mr-2 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"></path>
+						</svg>
+						<span class="dark:hidden">Dark mode</span>
+						<span class="hidden dark:block">Light mode</span>
+					</button>
+				</div>
+			</div>
+		</div>
+	}
+}

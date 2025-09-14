@@ -20,6 +20,11 @@ func RunAllMigrations(db *gorm.DB) error {
 		return fmt.Errorf("health migrations failed: %w", err)
 	}
 
+	// Run decision domain migrations
+	if err := RunDecisionMigrations(db); err != nil {
+		return fmt.Errorf("decision migrations failed: %w", err)
+	}
+
 	// Add composite indexes for performance
 	if err := createCompositeIndexes(db); err != nil {
 		return fmt.Errorf("index creation failed: %w", err)
@@ -61,6 +66,76 @@ func runHealthDomainMigrations(db *gorm.DB) error {
 	)
 	if err != nil {
 		return fmt.Errorf("health migration failed: %w", err)
+	}
+
+	return nil
+}
+
+// RunDecisionMigrations runs decision domain specific migrations
+func RunDecisionMigrations(db *gorm.DB) error {
+	// Run decision domain migrations with AutoMigrate
+	err := db.AutoMigrate(
+		&models.DecisionRecordModel{},
+		&models.AIPromptLogModel{},
+	)
+	if err != nil {
+		return fmt.Errorf("decision migration failed: %w", err)
+	}
+
+	// Create decision-specific composite indexes
+	if err := createDecisionIndexes(db); err != nil {
+		return fmt.Errorf("decision index creation failed: %w", err)
+	}
+
+	return nil
+}
+
+// createDecisionIndexes creates composite indexes for decision queries
+func createDecisionIndexes(db *gorm.DB) error {
+	decisionIndexes := []struct {
+		name  string
+		query string
+	}{
+		// Decision records - user-focused queries
+		{
+			name:  "idx_decisions_user_date",
+			query: "CREATE INDEX IF NOT EXISTS idx_decisions_user_date ON decision_records(user_id, created_at DESC)",
+		},
+		{
+			name:  "idx_decisions_user_category_decision",
+			query: "CREATE INDEX IF NOT EXISTS idx_decisions_user_category_decision ON decision_records(user_id, category, decision)",
+		},
+		{
+			name:  "idx_decisions_user_recent",
+			query: "CREATE INDEX IF NOT EXISTS idx_decisions_user_recent ON decision_records(user_id, decision, created_at DESC)",
+		},
+		{
+			name:  "idx_decisions_category_outcome",
+			query: "CREATE INDEX IF NOT EXISTS idx_decisions_category_outcome ON decision_records(category, decision, confidence)",
+		},
+		// AI prompt logs - debugging and analytics
+		{
+			name:  "idx_ai_logs_user_date",
+			query: "CREATE INDEX IF NOT EXISTS idx_ai_logs_user_date ON ai_prompt_logs(user_id, created_at DESC)",
+		},
+		{
+			name:  "idx_ai_logs_provider_success",
+			query: "CREATE INDEX IF NOT EXISTS idx_ai_logs_provider_success ON ai_prompt_logs(ai_provider, success, created_at DESC)",
+		},
+		{
+			name:  "idx_ai_logs_performance",
+			query: "CREATE INDEX IF NOT EXISTS idx_ai_logs_performance ON ai_prompt_logs(success, response_time_ms, tokens_total)",
+		},
+		{
+			name:  "idx_ai_logs_request_tracking",
+			query: "CREATE INDEX IF NOT EXISTS idx_ai_logs_request_tracking ON ai_prompt_logs(request_id, intent_id, created_at)",
+		},
+	}
+
+	for _, idx := range decisionIndexes {
+		if err := db.Exec(idx.query).Error; err != nil {
+			return fmt.Errorf("failed to create decision index %s: %w", idx.name, err)
+		}
 	}
 
 	return nil
@@ -175,12 +250,28 @@ func createAdditionalConstraints(db *gorm.DB) error {
 
 // MigrateHealthModelsOnly runs only health domain migrations (useful for development)
 func MigrateHealthModelsOnly(db *gorm.DB) error {
-	return RunHealthMigrations(db)
+	return runHealthDomainMigrations(db)
 }
 
 // RollbackHealthMigrations drops all health tables (for testing/cleanup)
 func RollbackHealthMigrations(db *gorm.DB) error {
-	return DropHealthTables(db)
+	// Drop health tables in reverse order
+	tables := []string{
+		"medical_expenses",
+		"medical_conditions", 
+		"insurance_policies",
+		"health_profiles",
+	}
+	
+	for _, table := range tables {
+		if db.Migrator().HasTable(table) {
+			if err := db.Migrator().DropTable(table); err != nil {
+				return fmt.Errorf("failed to drop table %s: %w", table, err)
+			}
+		}
+	}
+	
+	return nil
 }
 
 // GetMigrationStatus returns the status of all migrations
@@ -199,6 +290,12 @@ func GetMigrationStatus(db *gorm.DB) map[string]bool {
 		status[table] = db.Migrator().HasTable(table)
 	}
 
+	// Check decision tables
+	decisionModels := []string{"decision_records", "ai_prompt_logs"}
+	for _, table := range decisionModels {
+		status[table] = db.Migrator().HasTable(table)
+	}
+
 	return status
 }
 
@@ -210,6 +307,7 @@ func ValidateMigrationIntegrity(db *gorm.DB) error {
 	requiredTables := []string{
 		"users", "refresh_tokens", "expenses", "incomes", "loans", "finance_summaries",
 		"health_profiles", "medical_conditions", "medical_expenses", "insurance_policies",
+		"decision_records", "ai_prompt_logs",
 	}
 
 	for _, table := range requiredTables {
@@ -224,6 +322,8 @@ func ValidateMigrationIntegrity(db *gorm.DB) error {
 		"medical_conditions": {"user_id", "profile_id", "name", "severity", "is_active"},
 		"medical_expenses": {"user_id", "profile_id", "amount", "category", "date"},
 		"insurance_policies": {"user_id", "policy_number", "type", "deductible", "out_of_pocket_max"},
+		"decision_records": {"user_id", "intent_id", "item_name", "item_cost", "category", "decision", "confidence"},
+		"ai_prompt_logs": {"user_id", "request_id", "ai_provider", "max_tokens", "tokens_input", "tokens_output", "success"},
 	}
 
 	for table, columns := range criticalColumns {
@@ -240,7 +340,7 @@ func ValidateMigrationIntegrity(db *gorm.DB) error {
 // SetupTestDatabase prepares database for testing with clean migrations
 func SetupTestDatabase(db *gorm.DB) error {
 	// Drop existing tables to ensure clean state
-	if err := DropHealthTables(db); err != nil {
+	if err := RollbackHealthMigrations(db); err != nil {
 		return fmt.Errorf("failed to drop existing health tables: %w", err)
 	}
 
@@ -251,3 +351,4 @@ func SetupTestDatabase(db *gorm.DB) error {
 
 	return nil
 }
+

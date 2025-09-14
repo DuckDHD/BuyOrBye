@@ -1,0 +1,483 @@
+package pages
+
+import (
+	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/partials"
+)
+
+templ DecisionNewPage(user *types.UserResponseDTO, csrfToken string, categories []string) {
+	@layouts.App("New Decision", csrfToken, user, "/decisions/new") {
+		<div class="max-w-2xl mx-auto" x-data="decisionWizard()">
+			<!-- Progress Indicator -->
+			<div class="mb-8">
+				<div class="flex items-center">
+					<div class="flex items-center text-blue-600 dark:text-blue-400">
+						<div class="rounded-full transition duration-500 ease-in-out h-12 w-12 py-3 border-2 border-blue-600 dark:border-blue-400 bg-blue-600 dark:bg-blue-400">
+							<svg class="w-6 h-6 text-white mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+							</svg>
+						</div>
+						<div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-blue-600 dark:text-blue-400">Purchase Details</div>
+					</div>
+
+					<div class="flex-auto border-t-2 transition duration-500 ease-in-out" :class="currentStep >= 2 ? 'border-blue-600 dark:border-blue-400' : 'border-gray-300 dark:border-gray-600'"></div>
+
+					<div class="flex items-center" :class="currentStep >= 2 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'">
+						<div 
+							class="rounded-full transition duration-500 ease-in-out h-12 w-12 py-3 border-2"
+							:class="currentStep >= 2 ? 'border-blue-600 dark:border-blue-400 bg-blue-600 dark:bg-blue-400' : 'border-gray-300 dark:border-gray-600'"
+						>
+							<svg class="w-6 h-6 mx-auto" :class="currentStep >= 2 ? 'text-white' : 'text-gray-500 dark:text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+							</svg>
+						</div>
+						<div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase">Context & Details</div>
+					</div>
+
+					<div class="flex-auto border-t-2 transition duration-500 ease-in-out" :class="currentStep >= 3 ? 'border-blue-600 dark:border-blue-400' : 'border-gray-300 dark:border-gray-600'"></div>
+
+					<div class="flex items-center" :class="currentStep >= 3 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'">
+						<div 
+							class="rounded-full transition duration-500 ease-in-out h-12 w-12 py-3 border-2"
+							:class="currentStep >= 3 ? 'border-blue-600 dark:border-blue-400 bg-blue-600 dark:bg-blue-400' : 'border-gray-300 dark:border-gray-600'"
+						>
+							<svg class="w-6 h-6 mx-auto" :class="currentStep >= 3 ? 'text-white' : 'text-gray-500 dark:text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+							</svg>
+						</div>
+						<div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase">Review & Submit</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Form Container -->
+			<div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
+				<form 
+					hx-post="/decision/evaluate"
+					hx-target="#decision-result"
+					hx-swap="innerHTML"
+					hx-indicator="#processing-indicator"
+					@submit="handleSubmit"
+				>
+					<input type="hidden" name="csrf_token" value={ csrfToken }/>
+					
+					<!-- Step 1: Purchase Details -->
+					<div x-show="currentStep === 1" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
+						<div class="px-6 py-8">
+							<div class="flex items-center mb-6">
+								<div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+									<span class="text-white font-bold">1</span>
+								</div>
+								<div class="ml-4">
+									<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Purchase Details</h2>
+									<p class="text-gray-600 dark:text-gray-400">Tell us what you're considering buying</p>
+								</div>
+							</div>
+
+							<div class="space-y-6">
+								<!-- Item Name -->
+								<div>
+									<label for="item-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										What are you thinking of buying? <span class="text-red-500">*</span>
+									</label>
+									<input 
+										id="item-name" 
+										name="item_name" 
+										type="text" 
+										required 
+										class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-colors"
+										placeholder="e.g., iPhone 15 Pro, MacBook Air, Running Shoes"
+										x-model="formData.itemName"
+									/>
+								</div>
+
+								<!-- Cost -->
+								<div>
+									<label for="cost" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										How much does it cost? <span class="text-red-500">*</span>
+									</label>
+									<div class="relative">
+										<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+											<span class="text-gray-500 dark:text-gray-400 text-lg">$</span>
+										</div>
+										<input 
+											id="cost" 
+											name="cost" 
+											type="number" 
+											step="0.01" 
+											min="0"
+											required 
+											class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 pl-8 pr-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-colors"
+											placeholder="0.00"
+											x-model="formData.cost"
+										/>
+									</div>
+									<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Enter the total cost including taxes and fees</p>
+								</div>
+
+								<!-- Category -->
+								<div>
+									<label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										Category
+									</label>
+									<select 
+										id="category" 
+										name="category"
+										class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-colors"
+										x-model="formData.category"
+									>
+										<option value="">Select a category</option>
+										for _, category := range categories {
+											<option value={ category }>{ category }</option>
+										}
+									</select>
+								</div>
+
+								<!-- Brand (Optional) -->
+								<div>
+									<label for="brand" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										Brand (optional)
+									</label>
+									<input 
+										id="brand" 
+										name="brand" 
+										type="text" 
+										class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-colors"
+										placeholder="e.g., Apple, Nike, Sony"
+										x-model="formData.brand"
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Step 2: Context & Details -->
+					<div x-show="currentStep === 2" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
+						<div class="px-6 py-8">
+							<div class="flex items-center mb-6">
+								<div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+									<span class="text-white font-bold">2</span>
+								</div>
+								<div class="ml-4">
+									<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Context & Details</h2>
+									<p class="text-gray-600 dark:text-gray-400">Help us understand your situation better</p>
+								</div>
+							</div>
+
+							<div class="space-y-6">
+								<!-- Urgency -->
+								<div>
+									<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+										How urgent is this purchase? <span class="text-red-500">*</span>
+									</label>
+									<div class="space-y-3">
+										<div class="flex items-center p-4 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer" @click="formData.urgency = 'low'">
+											<input 
+												id="urgency-low" 
+												name="urgency" 
+												type="radio" 
+												value="low"
+												class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+												x-model="formData.urgency"
+											/>
+											<label for="urgency-low" class="ml-3 cursor-pointer">
+												<div class="text-sm font-medium text-gray-900 dark:text-white">Not urgent</div>
+												<div class="text-sm text-gray-600 dark:text-gray-400">I can wait months or even skip it entirely</div>
+											</label>
+										</div>
+										<div class="flex items-center p-4 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer" @click="formData.urgency = 'medium'">
+											<input 
+												id="urgency-medium" 
+												name="urgency" 
+												type="radio" 
+												value="medium"
+												class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+												x-model="formData.urgency"
+											/>
+											<label for="urgency-medium" class="ml-3 cursor-pointer">
+												<div class="text-sm font-medium text-gray-900 dark:text-white">Somewhat urgent</div>
+												<div class="text-sm text-gray-600 dark:text-gray-400">I'd like it within the next few weeks</div>
+											</label>
+										</div>
+										<div class="flex items-center p-4 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer" @click="formData.urgency = 'high'">
+											<input 
+												id="urgency-high" 
+												name="urgency" 
+												type="radio" 
+												value="high"
+												class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+												x-model="formData.urgency"
+											/>
+											<label for="urgency-high" class="ml-3 cursor-pointer">
+												<div class="text-sm font-medium text-gray-900 dark:text-white">Very urgent</div>
+												<div class="text-sm text-gray-600 dark:text-gray-400">I need it now or very soon</div>
+											</label>
+										</div>
+									</div>
+								</div>
+
+								<!-- Purpose -->
+								<div>
+									<label for="purpose" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										What's the main purpose?
+									</label>
+									<select 
+										id="purpose" 
+										name="purpose"
+										class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-colors"
+										x-model="formData.purpose"
+									>
+										<option value="">Select purpose</option>
+										<option value="necessity">Essential need (necessity)</option>
+										<option value="replacement">Replacing something broken/worn</option>
+										<option value="upgrade">Upgrading what I have</option>
+										<option value="convenience">Making life easier/more convenient</option>
+										<option value="entertainment">Entertainment/hobby</option>
+										<option value="gift">Gift for someone</option>
+										<option value="investment">Long-term investment</option>
+										<option value="impulse">Just want it</option>
+									</select>
+								</div>
+
+								<!-- Frequency of use -->
+								<div>
+									<label for="frequency" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										How often will you use it?
+									</label>
+									<select 
+										id="frequency" 
+										name="frequency"
+										class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-colors"
+										x-model="formData.frequency"
+									>
+										<option value="">Select frequency</option>
+										<option value="daily">Daily</option>
+										<option value="weekly">Weekly</option>
+										<option value="monthly">Monthly</option>
+										<option value="occasionally">Occasionally</option>
+										<option value="rarely">Rarely</option>
+									</select>
+								</div>
+
+								<!-- Additional Context -->
+								<div>
+									<label for="additional-context" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										Additional context
+									</label>
+									<textarea 
+										id="additional-context" 
+										name="additional_context" 
+										rows="4"
+										class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 resize-none transition-colors"
+										placeholder="Any other details that might help with the decision? Alternatives you've considered, special circumstances, etc."
+										x-model="formData.additionalContext"
+									></textarea>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Step 3: Review & Submit -->
+					<div x-show="currentStep === 3" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
+						<div class="px-6 py-8">
+							<div class="flex items-center mb-6">
+								<div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+									<span class="text-white font-bold">3</span>
+								</div>
+								<div class="ml-4">
+									<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Review & Submit</h2>
+									<p class="text-gray-600 dark:text-gray-400">Double-check your information before getting AI recommendations</p>
+								</div>
+							</div>
+
+							<!-- Review Summary -->
+							<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 mb-6">
+								<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Decision Summary</h3>
+								<dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+									<div>
+										<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Item</dt>
+										<dd class="mt-1 text-sm text-gray-900 dark:text-white" x-text="formData.itemName || 'Not specified'"></dd>
+									</div>
+									<div>
+										<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Cost</dt>
+										<dd class="mt-1 text-sm text-gray-900 dark:text-white" x-text="formData.cost ? '$' + parseFloat(formData.cost).toLocaleString() : 'Not specified'"></dd>
+									</div>
+									<div>
+										<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Category</dt>
+										<dd class="mt-1 text-sm text-gray-900 dark:text-white" x-text="formData.category || 'Not specified'"></dd>
+									</div>
+									<div>
+										<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Brand</dt>
+										<dd class="mt-1 text-sm text-gray-900 dark:text-white" x-text="formData.brand || 'Not specified'"></dd>
+									</div>
+									<div>
+										<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Urgency</dt>
+										<dd class="mt-1 text-sm text-gray-900 dark:text-white" x-text="formatUrgency(formData.urgency)"></dd>
+									</div>
+									<div>
+										<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Purpose</dt>
+										<dd class="mt-1 text-sm text-gray-900 dark:text-white" x-text="formatPurpose(formData.purpose)"></dd>
+									</div>
+									<div class="sm:col-span-2" x-show="formData.frequency">
+										<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Usage Frequency</dt>
+										<dd class="mt-1 text-sm text-gray-900 dark:text-white" x-text="formData.frequency || 'Not specified'"></dd>
+									</div>
+									<div class="sm:col-span-2" x-show="formData.additionalContext">
+										<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Additional Context</dt>
+										<dd class="mt-1 text-sm text-gray-900 dark:text-white" x-text="formData.additionalContext"></dd>
+									</div>
+								</dl>
+							</div>
+						</div>
+					</div>
+
+					<!-- Navigation Buttons -->
+					<div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 flex items-center justify-between">
+						<button 
+							type="button" 
+							class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-600 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
+							@click="previousStep"
+							:disabled="currentStep === 1"
+							x-show="currentStep > 1"
+						>
+							<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+							</svg>
+							Previous
+						</button>
+						
+						<div class="flex space-x-3">
+							<button 
+								type="button" 
+								class="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
+								@click="nextStep"
+								x-show="currentStep < 3"
+								:disabled="!canProceed"
+							>
+								Next
+								<svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+								</svg>
+							</button>
+							
+							<button 
+								type="submit" 
+								class="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors disabled:opacity-50"
+								x-show="currentStep === 3"
+								:disabled="!canSubmit || isProcessing"
+							>
+								<span x-show="!isProcessing">
+									<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+									</svg>
+									Get AI Recommendation
+								</span>
+								<span x-show="isProcessing" id="processing-indicator">
+									<svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+										<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+									</svg>
+									Processing...
+								</span>
+							</button>
+						</div>
+					</div>
+				</form>
+			</div>
+
+			<!-- Result Container -->
+			<div id="decision-result" class="mt-8"></div>
+		</div>
+
+		<script>
+			function decisionWizard() {
+				return {
+					currentStep: 1,
+					isProcessing: false,
+					formData: {
+						itemName: '',
+						cost: '',
+						category: '',
+						brand: '',
+						urgency: '',
+						purpose: '',
+						frequency: '',
+						additionalContext: ''
+					},
+
+					get canProceed() {
+						switch (this.currentStep) {
+							case 1:
+								return this.formData.itemName.trim() !== '' && 
+									   this.formData.cost !== '' && 
+									   parseFloat(this.formData.cost) > 0;
+							case 2:
+								return this.formData.urgency !== '';
+							case 3:
+								return true;
+							default:
+								return false;
+						}
+					},
+
+					get canSubmit() {
+						return this.canProceed && this.currentStep === 3;
+					},
+
+					nextStep() {
+						if (this.canProceed && this.currentStep < 3) {
+							this.currentStep++;
+						}
+					},
+
+					previousStep() {
+						if (this.currentStep > 1) {
+							this.currentStep--;
+						}
+					},
+
+					handleSubmit() {
+						this.isProcessing = true;
+					},
+
+					formatUrgency(urgency) {
+						const urgencyMap = {
+							'low': 'Not urgent',
+							'medium': 'Somewhat urgent',
+							'high': 'Very urgent'
+						};
+						return urgencyMap[urgency] || 'Not specified';
+					},
+
+					formatPurpose(purpose) {
+						const purposeMap = {
+							'necessity': 'Essential need',
+							'replacement': 'Replacement',
+							'upgrade': 'Upgrade',
+							'convenience': 'Convenience',
+							'entertainment': 'Entertainment/hobby',
+							'gift': 'Gift',
+							'investment': 'Investment',
+							'impulse': 'Want it'
+						};
+						return purposeMap[purpose] || 'Not specified';
+					},
+
+					init() {
+						// Listen for HTMX events
+						document.addEventListener('htmx:afterRequest', () => {
+							this.isProcessing = false;
+						});
+
+						document.addEventListener('htmx:responseError', () => {
+							this.isProcessing = false;
+							Alpine.store('toast').error('An error occurred while processing your decision. Please try again.');
+						});
+					}
+				}
+			}
+		</script>
+	}
+}

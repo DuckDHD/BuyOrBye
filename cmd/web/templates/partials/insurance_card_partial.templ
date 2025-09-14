@@ -1,0 +1,342 @@
+package partials
+
+import "fmt"
+
+templ InsuranceCardPartial(policies []InsurancePolicyDTO) {
+	<div class="space-y-4" x-data="insuranceCards()">
+		if len(policies) == 0 {
+			<div class="text-center py-12">
+				<div class="mx-auto h-12 w-12 text-gray-400 mb-4">
+					<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+					</svg>
+				</div>
+				<h3 class="text-sm font-medium text-gray-900 dark:text-white mb-1">No insurance policies</h3>
+				<p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Add your first insurance policy to track coverage</p>
+				<button 
+					class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+					@click="$dispatch('open-add-insurance-modal')"
+				>
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+					</svg>
+					Add Insurance Policy
+				</button>
+			</div>
+		} else {
+			for _, policy := range policies {
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+					<!-- Policy Header -->
+					<div class={ "px-6 py-4 border-b border-gray-200 dark:border-gray-700 " + getPolicyHeaderColor(policy.Type) }>
+						<div class="flex items-center justify-between">
+							<div class="flex items-center">
+								<div class={ "p-2 rounded-lg mr-3 " + getPolicyIconBg(policy.Type) }>
+									<svg class={ "w-5 h-5 " + getPolicyIconColor(policy.Type) } fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										if policy.Type == "health" {
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+										} else if policy.Type == "dental" {
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15M9 10V9a3 3 0 016 0v1m-6 0a3 3 0 106 0m-6 0h6"></path>
+										} else if policy.Type == "vision" {
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+										} else {
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+										}
+									</svg>
+								</div>
+								<div>
+									<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+										{ policy.ProviderName }
+									</h3>
+									<p class="text-sm text-gray-600 dark:text-gray-400">
+										{ formatPolicyType(policy.Type) } • Policy #{ policy.PolicyNumber }
+									</p>
+								</div>
+							</div>
+							<div class="flex items-center space-x-2">
+								<span class={ "inline-flex px-2 py-1 text-xs font-medium rounded-full " + getPolicyStatusColor(policy.Status) }>
+									{ policy.Status }
+								</span>
+								<!-- Actions Dropdown -->
+								<div class="relative" x-data="{ open: false }">
+									<button 
+										type="button"
+										class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+										@click="open = !open"
+										@click.outside="open = false"
+									>
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+										</svg>
+									</button>
+									<div 
+										x-show="open" 
+										x-transition
+										class="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 z-10"
+									>
+										<div class="py-1">
+											<button 
+												class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+												@click="editPolicy('{ policy.ID }'); open = false"
+											>
+												<svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+												</svg>
+												Edit Policy
+											</button>
+											<button 
+												class="flex items-center w-full px-4 py-2 text-sm text-red-700 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-600"
+												@click="confirmDelete('{ policy.ID }', '{ policy.ProviderName }'); open = false"
+											>
+												<svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+												</svg>
+												Delete Policy
+											</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Policy Details -->
+					<div class="px-6 py-4">
+						<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+							<!-- Coverage Percentage -->
+							<div class="text-center">
+								<div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+									{ policy.CoveragePercentage }%
+								</div>
+								<div class="text-xs text-gray-500 dark:text-gray-400">Coverage</div>
+							</div>
+							<!-- Monthly Premium -->
+							<div class="text-center">
+								<div class="text-2xl font-bold text-green-600 dark:text-green-400">
+									${ formatCurrency(policy.MonthlyPremium) }
+								</div>
+								<div class="text-xs text-gray-500 dark:text-gray-400">Monthly Premium</div>
+							</div>
+							<!-- Deductible -->
+							<div class="text-center">
+								<div class="text-2xl font-bold text-purple-600 dark:text-purple-400">
+									${ formatCurrency(policy.Deductible) }
+								</div>
+								<div class="text-xs text-gray-500 dark:text-gray-400">Deductible</div>
+							</div>
+						</div>
+
+						<!-- Deductible Progress Bar -->
+						<div class="mb-4">
+							<div class="flex justify-between items-center mb-2">
+								<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+									Deductible Progress
+								</span>
+								<span class="text-sm text-gray-500 dark:text-gray-400">
+									${ formatCurrency(policy.DeductibleUsed) } / ${ formatCurrency(policy.Deductible) }
+								</span>
+							</div>
+							<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+								<div 
+									class="h-3 rounded-full transition-all duration-1000 ease-out"
+									:class="getDeductibleProgressColor({ policy.DeductiblePercentage })"
+									x-data="{ width: 0 }"
+									x-init="setTimeout(() => { width = Math.min({ policy.DeductiblePercentage }, 100) }, 300)"
+									:style="`width: ${width}%`"
+								></div>
+							</div>
+							<div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+								<span>$0</span>
+								<span class="font-medium">
+									{ policy.DeductiblePercentage }% met
+								</span>
+								<span>${ formatCurrency(policy.Deductible) }</span>
+							</div>
+						</div>
+
+						<!-- Key Benefits -->
+						if len(policy.KeyBenefits) > 0 {
+							<div class="mb-4">
+								<h4 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Key Benefits</h4>
+								<div class="flex flex-wrap gap-2">
+									for _, benefit := range policy.KeyBenefits {
+										<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+											{ benefit }
+										</span>
+									}
+								</div>
+							</div>
+						}
+
+						<!-- Policy Dates -->
+						<div class="grid grid-cols-2 gap-4 text-sm">
+							<div>
+								<span class="text-gray-500 dark:text-gray-400">Effective Date:</span>
+								<span class="font-medium text-gray-900 dark:text-white ml-1">{ policy.EffectiveDate }</span>
+							</div>
+							<div>
+								<span class="text-gray-500 dark:text-gray-400">Renewal Date:</span>
+								<span class="font-medium text-gray-900 dark:text-white ml-1">{ policy.RenewalDate }</span>
+							</div>
+						</div>
+
+						<!-- Renewal Alert -->
+						if policy.DaysUntilRenewal <= 30 && policy.DaysUntilRenewal > 0 {
+							<div class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+								<div class="flex items-center">
+									<svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+									</svg>
+									<span class="text-sm text-yellow-800 dark:text-yellow-300">
+										Policy renews in { policy.DaysUntilRenewal } days. Review your coverage options.
+									</span>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+			}
+		}
+	</div>
+
+	<script>
+		function insuranceCards() {
+			return {
+				editPolicy(id) {
+					// Open edit modal for the policy
+					const container = document.getElementById('modal-container');
+					container.innerHTML = '';
+					container.classList.remove('hidden');
+					
+					htmx.ajax('GET', `/ui/modals/edit-insurance/${id}`, {
+						target: '#modal-container',
+						swap: 'innerHTML'
+					});
+				},
+
+				confirmDelete(id, name) {
+					if (confirm(`Are you sure you want to delete the policy from "${name}"? This action cannot be undone.`)) {
+						this.deletePolicy(id);
+					}
+				},
+
+				deletePolicy(id) {
+					htmx.ajax('DELETE', `/health/insurance/${id}`, {
+						target: '#policies-list',
+						swap: 'outerHTML'
+					}).then(() => {
+						document.dispatchEvent(new CustomEvent('policyChanged'));
+						this.showToast('Insurance policy deleted successfully', 'success');
+					}).catch(() => {
+						this.showToast('Failed to delete policy', 'error');
+					});
+				},
+
+				getDeductibleProgressColor(percentage) {
+					if (percentage >= 80) return 'bg-green-500';
+					if (percentage >= 50) return 'bg-yellow-500';
+					return 'bg-red-500';
+				},
+
+				showToast(message, type) {
+					document.dispatchEvent(new CustomEvent('show-toast', {
+						detail: { message, type }
+					}));
+				}
+			}
+		}
+	</script>
+}
+
+type InsurancePolicyDTO struct {
+	ID                   string
+	ProviderName         string
+	PolicyNumber         string
+	Type                 string // "health", "dental", "vision", "life"
+	Status               string // "active", "inactive", "pending"
+	CoveragePercentage   int
+	MonthlyPremium       float64
+	Deductible           float64
+	DeductibleUsed       float64
+	DeductiblePercentage float64
+	KeyBenefits          []string
+	EffectiveDate        string
+	RenewalDate          string
+	DaysUntilRenewal     int
+}
+
+func formatCurrency(amount float64) string {
+	return fmt.Sprintf("%.2f", amount)
+}
+
+func formatPolicyType(policyType string) string {
+	switch policyType {
+	case "health":
+		return "Health Insurance"
+	case "dental":
+		return "Dental Insurance"
+	case "vision":
+		return "Vision Insurance"
+	case "life":
+		return "Life Insurance"
+	default:
+		return "Insurance"
+	}
+}
+
+func getPolicyHeaderColor(policyType string) string {
+	switch policyType {
+	case "health":
+		return "bg-red-50 dark:bg-red-900/20"
+	case "dental":
+		return "bg-blue-50 dark:bg-blue-900/20"
+	case "vision":
+		return "bg-purple-50 dark:bg-purple-900/20"
+	case "life":
+		return "bg-green-50 dark:bg-green-900/20"
+	default:
+		return "bg-gray-50 dark:bg-gray-700"
+	}
+}
+
+func getPolicyIconBg(policyType string) string {
+	switch policyType {
+	case "health":
+		return "bg-red-100 dark:bg-red-900/30"
+	case "dental":
+		return "bg-blue-100 dark:bg-blue-900/30"
+	case "vision":
+		return "bg-purple-100 dark:bg-purple-900/30"
+	case "life":
+		return "bg-green-100 dark:bg-green-900/30"
+	default:
+		return "bg-gray-100 dark:bg-gray-700"
+	}
+}
+
+func getPolicyIconColor(policyType string) string {
+	switch policyType {
+	case "health":
+		return "text-red-600 dark:text-red-400"
+	case "dental":
+		return "text-blue-600 dark:text-blue-400"
+	case "vision":
+		return "text-purple-600 dark:text-purple-400"
+	case "life":
+		return "text-green-600 dark:text-green-400"
+	default:
+		return "text-gray-600 dark:text-gray-400"
+	}
+}
+
+func getPolicyStatusColor(status string) string {
+	switch status {
+	case "active":
+		return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+	case "inactive":
+		return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+	case "pending":
+		return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+	default:
+		return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+	}
+}

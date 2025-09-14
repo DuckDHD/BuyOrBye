@@ -534,3 +534,86 @@ func (h *HealthHandler) GetHealthSummary(c *gin.Context) {
 	
 	c.JSON(http.StatusOK, responseDTO)
 }
+
+// DeleteProfile deletes the user's health profile and all related data
+func (h *HealthHandler) DeleteProfile(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Delete profile not yet implemented"})
+}
+
+// CalculateRisk calculates and returns the user's health risk score  
+func (h *HealthHandler) CalculateRisk(c *gin.Context) {
+	userID, err := h.getUserFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+	
+	ctx := context.Background()
+	summary, err := h.healthService.CalculateHealthSummary(ctx, userID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Health profile not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to calculate risk: " + err.Error()})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"risk_score": summary.HealthRiskScore,
+		"risk_level": summary.HealthRiskLevel,
+	})
+}
+
+// Placeholder methods for missing handlers
+func (h *HealthHandler) CreateCondition(c *gin.Context) {
+	h.AddCondition(c) // Delegate to existing method
+}
+
+func (h *HealthHandler) GetCondition(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Get single condition not yet implemented"})
+}
+
+func (h *HealthHandler) GetConditionsByProfile(c *gin.Context) {
+	h.GetConditions(c) // Delegate to existing method  
+}
+
+func (h *HealthHandler) CreatePolicy(c *gin.Context) {
+	h.AddInsurancePolicy(c) // Delegate to existing method
+}
+
+func (h *HealthHandler) GetPolicy(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Get single policy not yet implemented"})
+}
+
+func (h *HealthHandler) UpdatePolicy(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Update policy not yet implemented"})
+}
+
+func (h *HealthHandler) DeletePolicy(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Delete policy not yet implemented"})
+}
+
+func (h *HealthHandler) GetPoliciesByProfile(c *gin.Context) {
+	h.GetActivePolicies(c) // Delegate to existing method
+}
+
+func (h *HealthHandler) CreateExpense(c *gin.Context) {
+	h.AddExpense(c) // Delegate to existing method
+}
+
+func (h *HealthHandler) GetExpense(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Get single expense not yet implemented"})
+}
+
+func (h *HealthHandler) UpdateExpense(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Update expense not yet implemented"})
+}
+
+func (h *HealthHandler) DeleteExpense(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Delete expense not yet implemented"})
+}
+
+func (h *HealthHandler) GetExpensesByProfile(c *gin.Context) {
+	h.GetExpenses(c) // Delegate to existing method
+}

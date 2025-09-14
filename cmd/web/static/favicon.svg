@@ -1,0 +1,20 @@
+<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="16" fill="#3B82F6"/>
+  
+  <!-- Decision symbol -->
+  <g stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Check mark for BUY -->
+    <path d="M10 16L14 20L22 12" opacity="0.8"/>
+    
+    <!-- Clock symbol for WAIT -->
+    <circle cx="16" cy="16" r="6" opacity="0.6"/>
+    <path d="M16 12V16L18 18" opacity="0.6"/>
+    
+    <!-- X mark for BYE -->
+    <path d="M12 12L20 20M20 12L12 20" opacity="0.4"/>
+  </g>
+  
+  <!-- Brand accent -->
+  <circle cx="24" cy="8" r="3" fill="#F59E0B"/>
+</svg>

@@ -1,0 +1,144 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
+)
+
+templ Dashboard(user *types.UserResponseDTO, csrfToken string, stats *DashboardStats) {
+	@layouts.App("Dashboard", csrfToken, user, "/dashboard") {
+		<div class="space-y-6">
+			<!-- Welcome Section -->
+			<div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+				<h1 class="text-2xl font-bold mb-2">Welcome back, { user.Name }!</h1>
+				<p class="text-blue-100">Make smarter purchase decisions with AI-powered insights.</p>
+			</div>
+
+			<!-- Stats Grid -->
+			<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+				@StatCard("Total Decisions", stats.TotalDecisions, "text-blue-600", "M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z")
+				@StatCard("Money Saved", "$" + formatCurrency(stats.MoneySaved), "text-green-600", "M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z")
+				@StatCard("This Month", stats.ThisMonth, "text-purple-600", "M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 012.25 2.25v7.5")
+				@StatCard("Avg Confidence", stats.AvgConfidence + "%", "text-orange-600", "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z")
+			</div>
+
+			<!-- Quick Actions -->
+			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+				@components.Card("Quick Actions") {
+					<div class="grid grid-cols-2 gap-4">
+						<a href="/decisions/new" class="flex flex-col items-center p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
+							<svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+							</svg>
+							<span class="text-sm font-medium text-gray-900 dark:text-white">New Decision</span>
+						</a>
+						<a href="/finance/add" class="flex flex-col items-center p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-green-500 dark:hover:border-green-400 transition-colors">
+							<svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+							</svg>
+							<span class="text-sm font-medium text-gray-900 dark:text-white">Add Income</span>
+						</a>
+					</div>
+				}
+
+				@components.Card("Recent Decisions") {
+					<div class="space-y-3">
+						if len(stats.RecentDecisions) > 0 {
+							for _, decision := range stats.RecentDecisions {
+								@RecentDecisionItem(decision)
+							}
+							<div class="mt-4">
+								<a href="/decisions" class="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
+									View all decisions →
+								</a>
+							</div>
+						} else {
+							<p class="text-gray-500 dark:text-gray-400 text-sm">No decisions yet. Create your first decision to get started!</p>
+						}
+					</div>
+				}
+			</div>
+		</div>
+	}
+}
+
+templ StatCard(title, value, colorClass, iconPath string) {
+	<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+		<div class="p-5">
+			<div class="flex items-center">
+				<div class="flex-shrink-0">
+					<svg class={ "h-6 w-6 " + colorClass } fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" d={ iconPath }></path>
+					</svg>
+				</div>
+				<div class="ml-5 w-0 flex-1">
+					<dl>
+						<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{ title }</dt>
+						<dd class="text-lg font-medium text-gray-900 dark:text-white">{ value }</dd>
+					</dl>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ RecentDecisionItem(decision RecentDecision) {
+	<div class="flex items-center justify-between py-2">
+		<div class="flex items-center space-x-3">
+			<div class={ "w-2 h-2 rounded-full " + getDecisionColor(decision.Decision) }></div>
+			<div>
+				<p class="text-sm font-medium text-gray-900 dark:text-white">{ decision.ItemName }</p>
+				<p class="text-xs text-gray-500 dark:text-gray-400">{ decision.TimeAgo }</p>
+			</div>
+		</div>
+		<span class={ "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium " + getDecisionBadgeClass(decision.Decision) }>
+			{ decision.Decision }
+		</span>
+	</div>
+}
+
+type DashboardStats struct {
+	TotalDecisions    string
+	MoneySaved        float64
+	ThisMonth         string
+	AvgConfidence     string
+	RecentDecisions   []RecentDecision
+}
+
+type RecentDecision struct {
+	ItemName  string
+	Decision  string
+	TimeAgo   string
+}
+
+func formatCurrency(amount float64) string {
+	return fmt.Sprintf("%.2f", amount)
+}
+
+func getDecisionColor(decision string) string {
+	switch decision {
+	case "BUY":
+		return "bg-green-400"
+	case "WAIT":
+		return "bg-yellow-400"
+	case "BYE":
+		return "bg-red-400"
+	default:
+		return "bg-gray-400"
+	}
+}
+
+func getDecisionBadgeClass(decision string) string {
+	switch decision {
+	case "BUY":
+		return "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
+	case "WAIT":
+		return "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100"
+	case "BYE":
+		return "bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100"
+	default:
+		return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+	}
+}

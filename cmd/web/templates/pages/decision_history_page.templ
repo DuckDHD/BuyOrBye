@@ -1,0 +1,254 @@
+package pages
+
+import (
+	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/partials"
+)
+
+templ DecisionHistoryPage(user *types.UserResponseDTO, csrfToken string, filters *DecisionFiltersDTO) {
+	@layouts.App("Decision History", csrfToken, user, "/decisions") {
+		<div class="space-y-6" x-data="decisionHistory()">
+			<!-- Page Header -->
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-2xl font-bold text-gray-900 dark:text-white">Decision History</h1>
+					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+						View and manage your past purchase decisions
+					</p>
+				</div>
+				<div class="flex items-center space-x-3">
+					<!-- Export Button -->
+					<button 
+						type="button"
+						class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+						hx-get="/decisions/export"
+						hx-vals="js:getFilterParams()"
+						hx-trigger="click"
+						hx-indicator="#export-spinner"
+					>
+						<span id="export-spinner" class="htmx-indicator">
+							<svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							</svg>
+						</span>
+						<svg class="w-4 h-4 mr-2 htmx-indicator-hide" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+						</svg>
+						<span class="htmx-indicator-hide">Export CSV</span>
+					</button>
+
+					<!-- New Decision Button -->
+					<a 
+						href="/decisions/new" 
+						class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+						hx-boost="true"
+					>
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+						</svg>
+						New Decision
+					</a>
+				</div>
+			</div>
+
+			<!-- Search and Filters -->
+			<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+				<!-- Search Bar -->
+				<div class="mb-4">
+					<label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						Search Decisions
+					</label>
+					<div class="relative">
+						<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+							<svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+							</svg>
+						</div>
+						<input 
+							id="search"
+							name="search"
+							type="text" 
+							class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+							placeholder="Search by item name, category, or decision type..."
+							value={ filters.Search }
+							hx-get="/decisions"
+							hx-target="#decisions-list"
+							hx-swap="innerHTML"
+							hx-trigger="keyup changed delay:500ms"
+							hx-include=".filter-input"
+							hx-indicator="#search-spinner"
+							x-model="searchQuery"
+						/>
+						<div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+							<svg id="search-spinner" class="htmx-indicator animate-spin h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							</svg>
+						</div>
+					</div>
+				</div>
+
+				<!-- Filter Controls -->
+				<div 
+					id="filter-controls"
+					hx-get="/ui/partials/decisions/filters"
+					hx-trigger="load"
+					hx-swap="innerHTML"
+				>
+					@partials.DecisionFilters(filters)
+				</div>
+			</div>
+
+			<!-- Results Section -->
+			<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+				<!-- Results Header -->
+				<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center">
+							<h2 class="text-lg font-medium text-gray-900 dark:text-white">Results</h2>
+							<span 
+								id="results-count"
+								class="ml-2 text-sm text-gray-500 dark:text-gray-400"
+								hx-get="/decisions/count"
+								hx-trigger="load, htmx:afterRequest from:#search, htmx:afterRequest from:.filter-input"
+								hx-include="#search, .filter-input"
+								hx-swap="innerHTML"
+							>
+								Loading...
+							</span>
+						</div>
+
+						<!-- View Toggle -->
+						<div class="flex items-center space-x-2">
+							<span class="text-sm text-gray-500 dark:text-gray-400">View:</span>
+							<div class="flex rounded-md shadow-sm">
+								<button 
+									type="button"
+									class="relative inline-flex items-center px-2 py-1 rounded-l-md border text-sm font-medium transition-colors"
+									:class="viewMode === 'list' ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-300' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-600'"
+									@click="viewMode = 'list'; refreshResults()"
+								>
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+									</svg>
+								</button>
+								<button 
+									type="button"
+									class="relative inline-flex items-center px-2 py-1 rounded-r-md border text-sm font-medium transition-colors"
+									:class="viewMode === 'grid' ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-300' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-600'"
+									@click="viewMode = 'grid'; refreshResults()"
+								>
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+									</svg>
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Decision List -->
+				<div 
+					id="decisions-list"
+					class="min-h-96"
+					hx-get="/ui/partials/decisions/list"
+					hx-trigger="load"
+					hx-include="#search, .filter-input"
+					hx-swap="innerHTML"
+					hx-indicator="#list-loading"
+				>
+					<!-- Loading State -->
+					<div id="list-loading" class="p-6">
+						@components.SkeletonList(5)
+					</div>
+				</div>
+
+				<!-- Pagination -->
+				<div 
+					id="pagination"
+					class="px-6 py-4 border-t border-gray-200 dark:border-gray-700"
+					hx-get="/ui/partials/decisions/pagination"
+					hx-trigger="load, htmx:afterRequest from:#decisions-list"
+					hx-include="#search, .filter-input"
+					hx-swap="innerHTML"
+				>
+					<!-- Pagination will be loaded here -->
+				</div>
+			</div>
+		</div>
+
+		<script>
+			function decisionHistory() {
+				return {
+					searchQuery: '{ filters.Search }',
+					viewMode: 'list',
+
+					getFilterParams() {
+						const form = document.querySelector('#filter-controls');
+						const searchInput = document.querySelector('#search');
+						const params = new URLSearchParams();
+						
+						if (searchInput && searchInput.value) {
+							params.append('search', searchInput.value);
+						}
+
+						if (form) {
+							const formData = new FormData(form);
+							for (const [key, value] of formData.entries()) {
+								if (value) {
+									params.append(key, value);
+								}
+							}
+						}
+
+						return Object.fromEntries(params);
+					},
+
+					refreshResults() {
+						htmx.trigger('#decisions-list', 'refresh');
+					},
+
+					init() {
+						// Listen for filter changes
+						document.addEventListener('filterChanged', () => {
+							this.refreshResults();
+						});
+
+						// Update URL with current filters
+						document.addEventListener('htmx:afterRequest', (event) => {
+							if (event.target.id === 'decisions-list') {
+								const params = this.getFilterParams();
+								const url = new URL(window.location);
+								url.search = new URLSearchParams(params).toString();
+								window.history.replaceState({}, '', url.toString());
+							}
+						});
+					}
+				}
+			}
+
+			// Global function for HTMX vals
+			function getFilterParams() {
+				const component = Alpine.store('decisionHistory') || Alpine.$data(document.querySelector('[x-data*="decisionHistory"]'));
+				return component.getFilterParams();
+			}
+		</script>
+	}
+}
+
+type DecisionFiltersDTO struct {
+	Search     string
+	Decision   string
+	Category   string
+	DateFrom   string
+	DateTo     string
+	MinCost    string
+	MaxCost    string
+	SortBy     string
+	SortOrder  string
+	Page       int
+	Limit      int
+}

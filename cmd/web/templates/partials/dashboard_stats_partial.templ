@@ -1,0 +1,277 @@
+package partials
+
+import "github.com/DuckDHD/BuyOrBye/internal/types"
+
+templ DashboardStats(stats *DashboardStatsDTO) {
+	<div id="stats-container" class="space-y-6" x-data="statsData()">
+		<!-- Period Selector -->
+		<div class="flex items-center justify-between">
+			<h3 class="text-lg font-medium text-gray-900 dark:text-white">Performance Overview</h3>
+			<div class="flex items-center space-x-2">
+				<label class="text-sm text-gray-600 dark:text-gray-400">Period:</label>
+				<select 
+					class="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+					hx-get="/ui/partials/dashboard/stats"
+					hx-target="#stats-container"
+					hx-swap="outerHTML"
+					hx-trigger="change"
+					hx-include="this"
+					name="period"
+					x-model="selectedPeriod"
+				>
+					<option value="week">This Week</option>
+					<option value="month" selected>This Month</option>
+					<option value="quarter">This Quarter</option>
+					<option value="year">This Year</option>
+				</select>
+			</div>
+		</div>
+
+		<!-- KPI Cards -->
+		<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+			@StatsCard("Total Decisions", stats.TotalDecisions, stats.DecisionsTrend, "decisions", "text-blue-600 dark:text-blue-400", "M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z")
+
+			@StatsCard("Money Saved", "$" + formatCurrency(stats.MoneySaved), stats.SavingsTrend, "savings", "text-green-600 dark:text-green-400", "M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z")
+
+			@StatsCard("Avg Confidence", stats.AvgConfidence + "%", stats.ConfidenceTrend, "confidence", "text-purple-600 dark:text-purple-400", "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z")
+
+			@StatsCard("Success Rate", stats.SuccessRate + "%", stats.SuccessRateTrend, "success", "text-orange-600 dark:text-orange-400", "M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.544.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0")
+		</div>
+
+		<!-- Detailed Metrics -->
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+			<!-- Decision Breakdown -->
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<h4 class="text-base font-medium text-gray-900 dark:text-white mb-4">Decision Breakdown</h4>
+				<div class="space-y-4">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center">
+							<div class="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+							<span class="text-sm text-gray-600 dark:text-gray-400">BUY Decisions</span>
+						</div>
+						<div class="text-right">
+							<div class="text-sm font-medium text-gray-900 dark:text-white">{ stats.BuyDecisions }</div>
+							<div class="text-xs text-gray-500 dark:text-gray-400">{ formatPercentage(stats.BuyPercentage) }%</div>
+						</div>
+					</div>
+					<div class="flex items-center justify-between">
+						<div class="flex items-center">
+							<div class="w-3 h-3 bg-yellow-500 rounded-full mr-3"></div>
+							<span class="text-sm text-gray-600 dark:text-gray-400">WAIT Decisions</span>
+						</div>
+						<div class="text-right">
+							<div class="text-sm font-medium text-gray-900 dark:text-white">{ stats.WaitDecisions }</div>
+							<div class="text-xs text-gray-500 dark:text-gray-400">{ formatPercentage(stats.WaitPercentage) }%</div>
+						</div>
+					</div>
+					<div class="flex items-center justify-between">
+						<div class="flex items-center">
+							<div class="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
+							<span class="text-sm text-gray-600 dark:text-gray-400">BYE Decisions</span>
+						</div>
+						<div class="text-right">
+							<div class="text-sm font-medium text-gray-900 dark:text-white">{ stats.ByeDecisions }</div>
+							<div class="text-xs text-gray-500 dark:text-gray-400">{ formatPercentage(stats.ByePercentage) }%</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Spending Categories -->
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<h4 class="text-base font-medium text-gray-900 dark:text-white mb-4">Top Categories</h4>
+				<div class="space-y-3">
+					for _, category := range stats.TopCategories {
+						<div class="flex items-center justify-between">
+							<span class="text-sm text-gray-600 dark:text-gray-400">{ category.Name }</span>
+							<div class="text-right">
+								<div class="text-sm font-medium text-gray-900 dark:text-white">${ formatCurrency(category.Amount) }</div>
+								<div class="text-xs text-gray-500 dark:text-gray-400">{ category.Count } items</div>
+							</div>
+						</div>
+					}
+				</div>
+			</div>
+		</div>
+
+		<!-- Performance Indicators -->
+		<div class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg p-6 border border-blue-100 dark:border-blue-800">
+			<div class="flex items-center justify-between mb-4">
+				<h4 class="text-base font-medium text-gray-900 dark:text-white">AI Performance Score</h4>
+				<div class="text-2xl font-bold text-blue-600 dark:text-blue-400" x-text="animatedScore">
+					{ stats.AIPerformanceScore }
+				</div>
+			</div>
+			<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-3">
+				<div 
+					class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-1000 ease-out"
+					:style="`width: ${animatedScore}%`"
+				></div>
+			</div>
+			<p class="text-sm text-gray-600 dark:text-gray-400">
+				Based on decision accuracy, savings achieved, and user satisfaction
+			</p>
+		</div>
+	</div>
+
+	<script>
+		function statsData() {
+			return {
+				selectedPeriod: 'month',
+				animatedScore: 0,
+				targetScore: { stats.AIPerformanceScore },
+				
+				init() {
+					this.animateScore();
+				},
+				
+				animateScore() {
+					const duration = 2000;
+					const steps = 60;
+					const increment = this.targetScore / steps;
+					const stepDuration = duration / steps;
+					
+					let currentStep = 0;
+					const timer = setInterval(() => {
+						currentStep++;
+						this.animatedScore = Math.min(Math.round(increment * currentStep), this.targetScore);
+						
+						if (currentStep >= steps || this.animatedScore >= this.targetScore) {
+							clearInterval(timer);
+							this.animatedScore = this.targetScore;
+						}
+					}, stepDuration);
+				}
+			}
+		}
+	</script>
+}
+
+templ StatsCard(title, value, trend, id, iconColor, iconPath string) {
+	<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+		<div class="p-5">
+			<div class="flex items-center">
+				<div class="flex-shrink-0">
+					<svg class={ "h-6 w-6 " + iconColor } fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" d={ iconPath }></path>
+					</svg>
+				</div>
+				<div class="ml-5 w-0 flex-1">
+					<dl>
+						<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{ title }</dt>
+						<dd class="flex items-baseline">
+							<div 
+								class="text-2xl font-semibold text-gray-900 dark:text-white"
+								x-data="{ animatedValue: 0, targetValue: parseFloat('{ extractNumber(value) }') || 0 }"
+								x-init="
+									if (targetValue > 0) {
+										let start = Date.now();
+										const duration = 1500;
+										const update = () => {
+											const elapsed = Date.now() - start;
+											const progress = Math.min(elapsed / duration, 1);
+											const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+											animatedValue = Math.round(targetValue * easeOutQuart);
+											if (progress < 1) requestAnimationFrame(update);
+										};
+										requestAnimationFrame(update);
+									}
+								"
+							>
+								<span x-show="targetValue > 0">
+									<span x-text="animatedValue"></span>
+									if extractUnit(value) != "" {
+										<span>{ extractUnit(value) }</span>
+									}
+								</span>
+								<span x-show="targetValue === 0">{ value }</span>
+							</div>
+							if trend != "" {
+								<div class="ml-2 flex items-baseline text-sm">
+									if getTrendDirection(trend) == "up" {
+										<svg class="self-center flex-shrink-0 h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+											<path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414 6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+										</svg>
+										<span class="sr-only">Increased by</span>
+										<span class="text-green-600 dark:text-green-400 font-medium">{ trend }</span>
+									} else if getTrendDirection(trend) == "down" {
+										<svg class="self-center flex-shrink-0 h-4 w-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+											<path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+										</svg>
+										<span class="sr-only">Decreased by</span>
+										<span class="text-red-600 dark:text-red-400 font-medium">{ trend }</span>
+									} else {
+										<svg class="self-center flex-shrink-0 h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+											<path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+										</svg>
+										<span class="sr-only">No change</span>
+										<span class="text-gray-600 dark:text-gray-400 font-medium">{ trend }</span>
+									}
+								</div>
+							}
+						</dd>
+					</dl>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+type DashboardStatsDTO struct {
+	TotalDecisions      string
+	DecisionsTrend      string
+	MoneySaved          float64
+	SavingsTrend        string
+	AvgConfidence       string
+	ConfidenceTrend     string
+	SuccessRate         string
+	SuccessRateTrend    string
+	BuyDecisions        string
+	BuyPercentage       float64
+	WaitDecisions       string
+	WaitPercentage      float64
+	ByeDecisions        string
+	ByePercentage       float64
+	AIPerformanceScore  int
+	TopCategories       []CategoryStats
+}
+
+type CategoryStats struct {
+	Name   string
+	Amount float64
+	Count  int
+}
+
+func formatCurrency(amount float64) string {
+	return fmt.Sprintf("%.2f", amount)
+}
+
+func formatPercentage(percent float64) string {
+	return fmt.Sprintf("%.1f", percent)
+}
+
+func extractNumber(value string) string {
+	// Extract numeric part from strings like "$1,234.56" or "42%"
+	re := regexp.MustCompile(`[\d,]+\.?\d*`)
+	matches := re.FindString(value)
+	return strings.ReplaceAll(matches, ",", "")
+}
+
+func extractUnit(value string) string {
+	// Extract non-numeric part like "$" or "%"
+	re := regexp.MustCompile(`[^\d,\.\s]+`)
+	return re.FindString(value)
+}
+
+func getTrendDirection(trend string) string {
+	if trend == "" {
+		return ""
+	}
+	if strings.HasPrefix(trend, "+") || strings.Contains(strings.ToLower(trend), "up") {
+		return "up"
+	}
+	if strings.HasPrefix(trend, "-") || strings.Contains(strings.ToLower(trend), "down") {
+		return "down"
+	}
+	return "flat"
+}

@@ -18,12 +18,12 @@ import (
 
 // FinanceHandler handles HTTP requests for finance endpoints
 type FinanceHandler struct {
-	financeService FinanceService
+	financeService FinanceServiceInterface
 	validator      *validator.Validate
 }
 
 // NewFinanceHandler creates a new finance handler with dependency injection
-func NewFinanceHandler(financeService FinanceService) *FinanceHandler {
+func NewFinanceHandler(financeService FinanceServiceInterface) *FinanceHandler {
 	return &FinanceHandler{
 		financeService: financeService,
 		validator:      validator.New(),

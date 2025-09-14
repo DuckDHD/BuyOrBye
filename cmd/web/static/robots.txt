@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/internal/
+Disallow: /auth/
+Disallow: /private/
+
+# Static assets
+Allow: /static/
+
+# Sitemap location
+Sitemap: https://buyorbye.app/sitemap.xml
+
+# Crawl delay (optional)
+Crawl-delay: 1

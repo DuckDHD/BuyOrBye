@@ -1,0 +1,445 @@
+package pages
+
+import (
+	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/partials"
+)
+
+templ HealthProfilePage(user *types.UserResponseDTO, csrfToken string) {
+	@layouts.App("Health Profile", csrfToken, user, "/health") {
+		<div class="space-y-8" x-data="healthProfile()">
+			<!-- Page Header -->
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Health Profile</h1>
+					<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+						Manage your health conditions, insurance, and medical expenses
+					</p>
+				</div>
+				<div class="flex items-center space-x-3">
+					<!-- Quick Add Dropdown -->
+					<div class="relative" x-data="{ open: false }">
+						<button 
+							type="button"
+							class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+							@click="open = !open"
+							@click.outside="open = false"
+						>
+							<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+							</svg>
+							Quick Add
+							<svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+							</svg>
+						</button>
+						<div 
+							x-show="open" 
+							x-transition
+							class="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 z-10"
+						>
+							<div class="py-1">
+								<button 
+									class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+									@click="openAddConditionModal(); open = false"
+								>
+									<svg class="w-4 h-4 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"></path>
+									</svg>
+									Add Condition
+								</button>
+								<button 
+									class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+									@click="openAddInsuranceModal(); open = false"
+								>
+									<svg class="w-4 h-4 mr-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+									</svg>
+									Add Insurance
+								</button>
+								<button 
+									class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+									@click="openAddExpenseModal(); open = false"
+								>
+									<svg class="w-4 h-4 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+									</svg>
+									Add Expense
+								</button>
+							</div>
+						</div>
+					</div>
+					<!-- Export Button -->
+					<button 
+						type="button"
+						class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+						@click="exportHealthData()"
+					>
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+						</svg>
+						Export Report
+					</button>
+				</div>
+			</div>
+
+			<!-- Profile Overview Cards -->
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+				<!-- Risk Score Card -->
+				<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+					<div class="p-5">
+						<div class="flex items-center">
+							<div class="flex-shrink-0">
+								<div class="bg-red-100 dark:bg-red-900/30 p-3 rounded-lg">
+									<svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+									</svg>
+								</div>
+							</div>
+							<div class="ml-5 w-0 flex-1">
+								<dl>
+									<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+										Health Risk Score
+									</dt>
+									<dd class="text-lg font-medium text-gray-900 dark:text-white">
+										<div 
+											id="risk-score-display"
+											hx-get="/ui/partials/health/risk-score"
+											hx-trigger="load"
+											hx-swap="innerHTML"
+											hx-indicator="#risk-loading"
+										>
+											<div id="risk-loading" class="htmx-indicator">
+												<div class="animate-pulse text-gray-400">Loading...</div>
+											</div>
+										</div>
+									</dd>
+								</dl>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Conditions Count -->
+				<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+					<div class="p-5">
+						<div class="flex items-center">
+							<div class="flex-shrink-0">
+								<div class="bg-yellow-100 dark:bg-yellow-900/30 p-3 rounded-lg">
+									<svg class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"></path>
+									</svg>
+								</div>
+							</div>
+							<div class="ml-5 w-0 flex-1">
+								<dl>
+									<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+										Active Conditions
+									</dt>
+									<dd 
+										class="text-lg font-medium text-gray-900 dark:text-white"
+										id="conditions-count"
+										hx-get="/ui/partials/health/conditions-count"
+										hx-trigger="load, conditionChanged from:body"
+										hx-swap="innerHTML"
+									>
+										0
+									</dd>
+								</dl>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Insurance Policies -->
+				<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+					<div class="p-5">
+						<div class="flex items-center">
+							<div class="flex-shrink-0">
+								<div class="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg">
+									<svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+									</svg>
+								</div>
+							</div>
+							<div class="ml-5 w-0 flex-1">
+								<dl>
+									<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+										Insurance Policies
+									</dt>
+									<dd 
+										class="text-lg font-medium text-gray-900 dark:text-white"
+										id="policies-count"
+										hx-get="/ui/partials/health/policies-count"
+										hx-trigger="load, policyChanged from:body"
+										hx-swap="innerHTML"
+									>
+										0
+									</dd>
+								</dl>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Monthly Expenses -->
+				<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+					<div class="p-5">
+						<div class="flex items-center">
+							<div class="flex-shrink-0">
+								<div class="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
+									<svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+									</svg>
+								</div>
+							</div>
+							<div class="ml-5 w-0 flex-1">
+								<dl>
+									<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+										Monthly Expenses
+									</dt>
+									<dd 
+										class="text-lg font-medium text-gray-900 dark:text-white"
+										id="monthly-expenses"
+										hx-get="/ui/partials/health/monthly-expenses"
+										hx-trigger="load, expenseChanged from:body"
+										hx-swap="innerHTML"
+									>
+										$0.00
+									</dd>
+								</dl>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Main Content Grid -->
+			<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+				<!-- Left Column: Conditions and Risk -->
+				<div class="lg:col-span-2 space-y-8">
+					<!-- Health Risk Visualization -->
+					<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+						<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+							<h2 class="text-lg font-medium text-gray-900 dark:text-white">Health Risk Assessment</h2>
+							<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+								Based on your conditions, age, and lifestyle factors
+							</p>
+						</div>
+						<div 
+							id="risk-gauge"
+							class="p-6"
+							hx-get="/ui/partials/health/risk-gauge"
+							hx-trigger="load, conditionChanged from:body"
+							hx-swap="innerHTML"
+							hx-indicator="#gauge-loading"
+						>
+							<div id="gauge-loading" class="htmx-indicator flex items-center justify-center min-h-48">
+								<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Medical Conditions -->
+					<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+						<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+							<div class="flex items-center justify-between">
+								<div>
+									<h2 class="text-lg font-medium text-gray-900 dark:text-white">Medical Conditions</h2>
+									<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+										Track your health conditions and medications
+									</p>
+								</div>
+								<button 
+									class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
+									@click="openAddConditionModal()"
+								>
+									<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+									</svg>
+									Add Condition
+								</button>
+							</div>
+						</div>
+						<div 
+							id="conditions-list"
+							class="min-h-48"
+							hx-get="/ui/partials/health/conditions-list"
+							hx-trigger="load, conditionChanged from:body"
+							hx-swap="innerHTML"
+							hx-indicator="#conditions-loading"
+						>
+							<div id="conditions-loading" class="htmx-indicator p-6">
+								@components.SkeletonList(3)
+							</div>
+						</div>
+					</div>
+
+					<!-- Medical Expenses -->
+					<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+						<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+							<div class="flex items-center justify-between">
+								<div>
+									<h2 class="text-lg font-medium text-gray-900 dark:text-white">Medical Expenses</h2>
+									<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+										Track your healthcare costs and treatments
+									</p>
+								</div>
+								<button 
+									class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50"
+									@click="openAddExpenseModal()"
+								>
+									<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+									</svg>
+									Add Expense
+								</button>
+							</div>
+						</div>
+						<div 
+							id="expenses-list"
+							class="min-h-48"
+							hx-get="/ui/partials/health/expenses-list"
+							hx-trigger="load, expenseChanged from:body"
+							hx-swap="innerHTML"
+							hx-indicator="#expenses-loading"
+						>
+							<div id="expenses-loading" class="htmx-indicator p-6">
+								@components.SkeletonList(4)
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Right Column: Insurance -->
+				<div class="space-y-8">
+					<!-- Insurance Policies -->
+					<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+						<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+							<div class="flex items-center justify-between">
+								<div>
+									<h2 class="text-lg font-medium text-gray-900 dark:text-white">Insurance Policies</h2>
+									<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+										Manage your coverage and deductibles
+									</p>
+								</div>
+								<button 
+									class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+									@click="openAddInsuranceModal()"
+								>
+									<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+									</svg>
+									Add Policy
+								</button>
+							</div>
+						</div>
+						<div 
+							id="policies-list"
+							class="min-h-64"
+							hx-get="/ui/partials/health/policies-list"
+							hx-trigger="load, policyChanged from:body"
+							hx-swap="innerHTML"
+							hx-indicator="#policies-loading"
+						>
+							<div id="policies-loading" class="htmx-indicator p-6">
+								@components.SkeletonCard()
+								@components.SkeletonCard()
+							</div>
+						</div>
+					</div>
+
+					<!-- Health Tips -->
+					<div class="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg p-6 border border-green-100 dark:border-green-800">
+						<div class="flex items-start">
+							<div class="bg-green-100 dark:bg-green-900/30 p-2 rounded-lg mr-3">
+								<svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+								</svg>
+							</div>
+							<div>
+								<h3 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Health Tips</h3>
+								<div 
+									id="health-tips"
+									hx-get="/ui/partials/health/tips"
+									hx-trigger="load"
+									hx-swap="innerHTML"
+								>
+									<ul class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+										<li>• Regular checkups can detect issues early</li>
+										<li>• Keep track of all medications and dosages</li>
+										<li>• Update your insurance information annually</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Modal Container -->
+			<div id="modal-container" class="hidden"></div>
+		</div>
+
+		<script>
+			function healthProfile() {
+				return {
+					init() {
+						// Listen for data changes to refresh counters
+						document.addEventListener('conditionChanged', () => {
+							this.refreshCounters();
+						});
+						document.addEventListener('policyChanged', () => {
+							this.refreshCounters();
+						});
+						document.addEventListener('expenseChanged', () => {
+							this.refreshCounters();
+						});
+					},
+
+					refreshCounters() {
+						htmx.trigger('#conditions-count', 'refresh');
+						htmx.trigger('#policies-count', 'refresh');
+						htmx.trigger('#monthly-expenses', 'refresh');
+						htmx.trigger('#risk-score-display', 'refresh');
+					},
+
+					exportHealthData() {
+						window.location.href = '/health/export?format=pdf';
+					},
+
+					openAddConditionModal() {
+						this.openModal('/ui/modals/add-condition');
+					},
+
+					openAddInsuranceModal() {
+						this.openModal('/ui/modals/add-insurance');
+					},
+
+					openAddExpenseModal() {
+						this.openModal('/ui/modals/add-expense');
+					},
+
+					openModal(url) {
+						const container = document.getElementById('modal-container');
+						container.innerHTML = '';
+						container.classList.remove('hidden');
+						
+						htmx.ajax('GET', url, {
+							target: '#modal-container',
+							swap: 'innerHTML'
+						});
+					},
+
+					closeModal() {
+						const container = document.getElementById('modal-container');
+						container.classList.add('hidden');
+						container.innerHTML = '';
+					}
+				}
+			}
+		</script>
+	}
+}

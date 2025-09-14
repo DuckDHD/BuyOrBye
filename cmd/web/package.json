@@ -1,0 +1,48 @@
+{
+  "name": "buyorbye-frontend-tests",
+  "version": "1.0.0",
+  "description": "Frontend testing suite for BuyOrBye application",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:js": "jest static/js/test/",
+    "test:accessibility": "go test ./templates -run TestAccessibility -v",
+    "test:performance": "go test ./templates -run TestPerformance -v",
+    "test:golden": "go test ./templates -run TestTemplate -v",
+    "test:golden:update": "go test ./templates -run TestTemplate -update -v",
+    "test:all": "npm run test && npm run test:accessibility && npm run test:performance",
+    "lint:js": "eslint static/js/",
+    "lint:css": "stylelint static/css/",
+    "size:check": "npm run size:css && npm run size:js",
+    "size:css": "stat -f%z static/dist/css/output.css 2>/dev/null | awk '{printf \"CSS: %.1f KB\\n\", $1/1024}' || echo 'CSS file not found'",
+    "size:js": "find static/js -name '*.js' -not -path '*/test/*' -exec wc -c {} + | tail -1 | awk '{printf \"JS: %.1f KB\\n\", $1/1024}'",
+    "accessibility:audit": "npm run test:accessibility",
+    "performance:audit": "npm run test:performance && npm run size:check"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "testMatch": [
+      "**/static/js/test/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "static/js/**/*.js",
+      "!static/js/test/**",
+      "!static/js/dist/**"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/static/js/test/setup.js"
+    ]
+  }
+}

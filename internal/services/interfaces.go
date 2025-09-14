@@ -184,6 +184,80 @@ type HealthInsights struct {
 	ProjectedAnnualCost    float64 `json:"projected_annual_cost"`
 }
 
+// DecisionRepository defines the interface for decision record persistence and analytics
+type DecisionRepository interface {
+	// Core CRUD operations
+	SaveDecision(ctx context.Context, outcome domain.DecisionOutcome, intent domain.PurchaseIntent) error
+	GetDecisionByID(ctx context.Context, decisionID string) (*domain.DecisionOutcome, error)
+	
+	// History and analytics
+	GetDecisionHistory(ctx context.Context, userID string, limit, offset int) ([]*domain.DecisionOutcome, error)
+	GetDecisionsByCategory(ctx context.Context, userID string, category string, daysBack int) ([]*domain.DecisionOutcome, error)
+	GetDecisionStats(ctx context.Context, userID string, daysBack int) (*DecisionStats, error)
+	
+	// Aggregation queries
+	GetRecentDecisions(ctx context.Context, userID string, daysBack int) ([]*domain.DecisionOutcome, error)
+	GetDecisionTrends(ctx context.Context, userID string, daysBack int) (*DecisionTrends, error)
+}
+
+// PromptLogRepository defines the interface for AI prompt logging and caching
+type PromptLogRepository interface {
+	// Core logging operations
+	LogPrompt(ctx context.Context, prompt domain.AIPrompt, userID, requestID, intentID string) (string, error)
+	UpdateWithResponse(ctx context.Context, logID string, response domain.AIResponse, processingTimeMs int64) error
+	UpdateWithError(ctx context.Context, logID string, err error, statusCode int, processingTimeMs int64) error
+	
+	// Caching and deduplication
+	GeneratePromptHash(prompt domain.AIPrompt) string
+	GetPromptByHash(ctx context.Context, promptHash string) (*domain.AIResponse, bool, error)
+	
+	// Analytics and debugging - Note: We use interface{} instead of models.AIPromptLogModel to avoid circular imports
+	GetFailedPrompts(ctx context.Context, hoursBack int) (interface{}, error)
+	GetRecentPrompts(ctx context.Context, userID string, hoursBack int) (interface{}, error)
+	GetTokenUsageStats(ctx context.Context, userID string, hoursBack int) (*TokenUsageStats, error)
+	GetPromptsByProvider(ctx context.Context, userID string, provider string, hoursBack int) (interface{}, error)
+}
+
+// Supporting types for DecisionRepository operations
+
+// DecisionStats represents aggregated decision statistics
+type DecisionStats struct {
+	TotalDecisions        int64   `json:"total_decisions"`
+	TotalBuyDecisions     int64   `json:"total_buy_decisions"`
+	TotalWaitDecisions    int64   `json:"total_wait_decisions"`
+	TotalByeDecisions     int64   `json:"total_bye_decisions"`
+	AverageConfidence     float64 `json:"average_confidence"`
+	AverageBuyCost        float64 `json:"average_buy_cost"`
+	TotalAmountSpent      float64 `json:"total_amount_spent"`
+	MostFrequentCategory  string  `json:"most_frequent_category"`
+	HighConfidenceRate    float64 `json:"high_confidence_rate"`    // % of decisions with >0.8 confidence
+	BuySuccessRate        float64 `json:"buy_success_rate"`        // % of decisions that resulted in BUY
+}
+
+// DecisionTrends represents decision trends over time
+type DecisionTrends struct {
+	DailyDecisionCounts   map[string]int `json:"daily_decision_counts"`   // date -> count
+	CategoryDistribution  map[string]int `json:"category_distribution"`   // category -> count
+	DecisionDistribution  map[string]int `json:"decision_distribution"`   // decision type -> count
+	ConfidenceTrend       []float64      `json:"confidence_trend"`        // daily confidence averages
+	SpendingTrend         []float64      `json:"spending_trend"`          // daily spending amounts
+}
+
+// Supporting types for PromptLogRepository operations
+
+// TokenUsageStats represents AI token usage statistics
+type TokenUsageStats struct {
+	TotalInputTokens     int64   `json:"total_input_tokens"`
+	TotalOutputTokens    int64   `json:"total_output_tokens"`
+	TotalTokens          int64   `json:"total_tokens"`
+	SuccessfulRequests   int64   `json:"successful_requests"`
+	FailedRequests       int64   `json:"failed_requests"`
+	EstimatedTotalCost   float64 `json:"estimated_total_cost_usd"`
+	AverageResponseTime  float64 `json:"average_response_time_ms"`
+	AverageTokensPerReq  float64 `json:"average_tokens_per_request"`
+	SuccessRate          float64 `json:"success_rate"`
+}
+
 // Supporting types for InsuranceEvaluator operations
 
 // CoverageResult represents the result of coverage calculation

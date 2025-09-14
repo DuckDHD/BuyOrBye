@@ -82,7 +82,6 @@ func main() {
 	// Initialize health analysis services
 	riskCalculator := services.NewRiskCalculator()
 	costAnalyzer := services.NewMedicalCostAnalyzer()
-	insuranceEvaluator := services.NewInsuranceEvaluator()
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
@@ -100,10 +99,32 @@ func main() {
 		costAnalyzer,
 	)
 
+	// TODO: Initialize decision domain components
+	// Currently disabled due to interface compatibility issues that need to be resolved
+	// The following components are available but need proper adapter interfaces:
+	//
+	// decisionRepo := repositories.NewDecisionRepository(db)
+	// promptLogRepo := repositories.NewPromptLogRepository(db)
+	// openaiClient := clients.NewOpenAIClient()
+	// contextAggregator := services.NewContextAggregator(financeService, healthService, decisionRepo)
+	// promptBuilder := services.NewPromptBuilder()
+	// decisionInterpreter := services.NewDecisionInterpreter()
+	// recommendationEngine := services.NewRecommendationEngine()
+	// enhancedDecisionService := services.NewEnhancedDecisionService(...)
+
+	// Decision service interface placeholder - will be implemented after interface resolution
+	var decisionServiceInterface handlers.DecisionServiceInterface = nil
+	var financeServiceInterface handlers.FinanceServiceInterface = nil
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
-	financeHandler := handlers.NewFinanceHandler(financeService)
+	financeHandler := handlers.NewFinanceHandler(financeServiceInterface)
 	healthHandler := handlers.NewHealthHandler(healthService)
+	// Only initialize decision handler if service is available
+	var decisionHandler *handlers.DecisionHandler
+	if decisionServiceInterface != nil {
+		decisionHandler = handlers.NewDecisionHandler(decisionServiceInterface)
+	}
 
 	// Initialize middlewares
 	jwtAuthMiddleware := middleware.NewJWTAuthMiddleware(jwtService)
@@ -134,6 +155,9 @@ func main() {
 			"message": "BuyOrBye API is running",
 		})
 	})
+
+	// UI Routes (Frontend/Web Interface)
+	setupUIRoutes(router, authHandler, financeHandler, healthHandler, decisionHandler, jwtAuthMiddleware)
 
 	// API routes
 	api := router.Group("/api/v1")
@@ -209,54 +233,101 @@ func main() {
 	// Health routes (all require auth)
 	health := api.Group("/health")
 	health.Use(jwtAuthMiddleware.RequireAuth())
-	health.Use(middleware.ValidateHealthOwnership())
 	health.Use(middleware.SanitizeSensitiveData())
 	{
 		// Profile endpoints
-		health.POST("/profile",
+		health.POST("/profiles",
 			middleware.ValidateHealthProfileData(),
 			healthHandler.CreateProfile)
-		health.GET("/profile", healthHandler.GetProfile)
-		health.PUT("/profile",
+		health.GET("/profiles/:id",
+			middleware.ValidateHealthOwnership(),
+			healthHandler.GetProfile)
+		health.PUT("/profiles/:id",
+			middleware.ValidateHealthOwnership(),
 			middleware.ValidateHealthProfileData(),
 			healthHandler.UpdateProfile)
+		health.DELETE("/profiles/:id",
+			middleware.ValidateHealthOwnership(),
+			healthHandler.DeleteProfile)
+		health.GET("/profiles/:id/summary",
+			middleware.ValidateHealthOwnership(),
+			healthHandler.GetHealthSummary)
+		health.GET("/profiles/:id/risk",
+			middleware.ValidateHealthOwnership(),
+			healthHandler.CalculateRisk)
 
 		// Condition endpoints
 		health.POST("/conditions",
 			middleware.ValidateHealthOwnership(),
-			healthHandler.AddCondition)
-		health.GET("/conditions", healthHandler.GetConditions)
+			healthHandler.CreateCondition)
+		health.GET("/conditions/:id",
+			middleware.ValidateHealthOwnership(),
+			healthHandler.GetCondition)
 		health.PUT("/conditions/:id",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.UpdateCondition)
 		health.DELETE("/conditions/:id",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.RemoveCondition)
+		health.GET("/profiles/:profileId/conditions",
+			middleware.ValidateHealthOwnership(),
+			healthHandler.GetConditionsByProfile)
+
+		// Policy endpoints
+		health.POST("/policies",
+			middleware.ValidateInsuranceDates(),
+			middleware.ValidateHealthOwnership(),
+			healthHandler.CreatePolicy)
+		health.GET("/policies/:id",
+			middleware.ValidateHealthOwnership(),
+			healthHandler.GetPolicy)
+		health.PUT("/policies/:id",
+			middleware.ValidateHealthOwnership(),
+			middleware.ValidateInsuranceDates(),
+			healthHandler.UpdatePolicy)
+		health.DELETE("/policies/:id",
+			middleware.ValidateHealthOwnership(),
+			healthHandler.DeletePolicy)
+		health.GET("/profiles/:profileId/policies",
+			middleware.ValidateHealthOwnership(),
+			healthHandler.GetPoliciesByProfile)
 
 		// Expense endpoints
 		health.POST("/expenses",
 			middleware.ValidateExpenseData(),
 			middleware.ValidateHealthOwnership(),
-			healthHandler.AddExpense)
-		health.GET("/expenses", healthHandler.GetExpenses)
-		health.GET("/expenses/recurring", healthHandler.GetRecurringExpenses)
-
-		// Insurance endpoints
-		health.POST("/insurance",
-			middleware.ValidateInsuranceDates(),
+			healthHandler.CreateExpense)
+		health.GET("/expenses/:id",
 			middleware.ValidateHealthOwnership(),
-			healthHandler.AddInsurancePolicy)
-		health.GET("/insurance", healthHandler.GetActivePolicies)
-		health.PUT("/insurance/:id/deductible",
+			healthHandler.GetExpense)
+		health.PUT("/expenses/:id",
 			middleware.ValidateHealthOwnership(),
-			healthHandler.UpdateDeductibleProgress)
+			middleware.ValidateExpenseData(),
+			healthHandler.UpdateExpense)
+		health.DELETE("/expenses/:id",
+			middleware.ValidateHealthOwnership(),
+			healthHandler.DeleteExpense)
+		health.GET("/profiles/:profileId/expenses",
+			middleware.ValidateHealthOwnership(),
+			healthHandler.GetExpensesByProfile)
+	}
 
-		// Analysis endpoints
-		health.GET("/summary", healthHandler.GetHealthSummary)
+	// Decision routes (all require auth) - Only enable if service is available
+	if decisionHandler != nil {
+		decision := api.Group("/decision")
+		decision.Use(jwtAuthMiddleware.RequireAuth())
+		{
+			// Decision evaluation endpoint
+			decision.POST("/evaluate",
+				middleware.ValidateRequestLimits(),
+				decisionHandler.MakeDecision)
 
-		// Future endpoints for health context integration
-		// health.GET("/risk-score", healthHandler.GetRiskScore)
-		// health.GET("/context", healthHandler.GetHealthContext)
+			// Decision history endpoint
+			decision.GET("/history", decisionHandler.GetDecisionHistory)
+
+			// Decision statistics endpoint
+			decision.GET("/stats", decisionHandler.GetDecisionStats)
+		}
 	}
 
 	// Create HTTP server with config
@@ -308,4 +379,196 @@ func gracefulShutdown(server *http.Server, done chan bool) {
 
 	// Notify the main goroutine that the shutdown is complete
 	done <- true
+}
+
+// setupUIRoutes organizes frontend UI routes with proper separation
+func setupUIRoutes(
+	router *gin.Engine,
+	authHandler *handlers.AuthHandler,
+	financeHandler *handlers.FinanceHandler,
+	healthHandler *handlers.HealthHandler,
+	decisionHandler *handlers.DecisionHandler,
+	jwtAuthMiddleware *middleware.JWTAuthMiddleware,
+) {
+	// Static assets with caching
+	router.Static("/static", "cmd/web/static")
+	router.StaticFile("/favicon.ico", "cmd/web/static/favicon.svg")
+	router.StaticFile("/manifest.json", "cmd/web/static/manifest.json")
+	router.StaticFile("/robots.txt", "cmd/web/static/robots.txt")
+
+	// Public UI routes (no auth required)
+	router.GET("/", redirectToDashboard)
+	router.GET("/login", renderLoginPage)
+	router.GET("/register", renderRegisterPage)
+	router.GET("/forgot-password", renderForgotPasswordPage)
+
+	// Protected UI routes group
+	protected := router.Group("")
+	protected.Use(jwtAuthMiddleware.RequireAuth())
+	{
+		// Main page routes - return full HTML pages
+		protected.GET("/dashboard", renderDashboardPage)
+		protected.GET("/finance", renderFinanceOverviewPage)
+		protected.GET("/health", renderHealthProfilePage)
+		protected.GET("/decisions/new", renderDecisionNewPage)
+		protected.GET("/decisions/history", renderDecisionHistoryPage)
+
+		// HTMX partial routes group - return HTML fragments only
+		ui := protected.Group("/ui/partials")
+		{
+			// Dashboard partials
+			ui.GET("/dashboard/stats", renderDashboardStatsPartial)
+			ui.GET("/dashboard/quick-decision", renderQuickDecisionPartial)
+			ui.GET("/dashboard/recent-decisions", renderRecentDecisionsPartial)
+			ui.GET("/dashboard/content", renderDashboardContentPartial)
+			ui.GET("/dashboard/below-fold", renderDashboardBelowFoldPartial)
+			ui.GET("/dashboard/insights", renderDashboardInsightsPartial)
+
+			// Finance partials
+			ui.GET("/finance/overview", renderFinanceOverviewPartial)
+			ui.GET("/finance/summary", renderFinanceSummaryPartial)
+			ui.GET("/finance/income/list", renderIncomeListPartial)
+			ui.GET("/finance/expense/form", renderExpenseFormPartial)
+
+			// Health partials
+			ui.GET("/health/profile", renderHealthProfilePartial)
+			ui.GET("/health/risk-gauge/:profileId", renderHealthRiskGaugePartial)
+			ui.GET("/health/condition/add", renderConditionAddPartial)
+			ui.GET("/health/insurance/card/:policyId", renderInsuranceCardPartial)
+
+			// Decision partials
+			if decisionHandler != nil {
+				ui.GET("/decision/result", renderDecisionResultPartial)
+				ui.GET("/decision/filter", renderDecisionFilterPartial)
+			}
+		}
+	}
+}
+
+// Page handlers - return full HTML pages
+
+func redirectToDashboard(c *gin.Context) {
+	c.Redirect(302, "/dashboard")
+}
+
+func renderLoginPage(c *gin.Context) {
+	// TODO: Implement login page rendering using existing templates
+	c.String(200, "Login Page - TODO: Implement with existing auth templates")
+}
+
+func renderRegisterPage(c *gin.Context) {
+	// TODO: Implement register page rendering using existing templates
+	c.String(200, "Register Page - TODO: Implement with existing auth templates")
+}
+
+func renderForgotPasswordPage(c *gin.Context) {
+	// TODO: Implement forgot password page rendering using existing templates
+	c.String(200, "Forgot Password Page - TODO: Implement with existing auth templates")
+}
+
+func renderDashboardPage(c *gin.Context) {
+	// TODO: Implement dashboard page rendering using existing dashboard_page.templ
+	c.String(200, "Dashboard Page - TODO: Implement with existing dashboard templates")
+}
+
+func renderFinanceOverviewPage(c *gin.Context) {
+	// TODO: Implement finance overview page rendering using existing finance_overview_page.templ
+	c.String(200, "Finance Overview Page - TODO: Implement with existing finance templates")
+}
+
+func renderHealthProfilePage(c *gin.Context) {
+	// TODO: Implement health profile page rendering using existing health_profile_page.templ
+	c.String(200, "Health Profile Page - TODO: Implement with existing health templates")
+}
+
+func renderDecisionNewPage(c *gin.Context) {
+	// TODO: Implement new decision page rendering using existing decision_new_page.templ
+	c.String(200, "New Decision Page - TODO: Implement with existing decision templates")
+}
+
+func renderDecisionHistoryPage(c *gin.Context) {
+	// TODO: Implement decision history page rendering using existing decision_history_page.templ
+	c.String(200, "Decision History Page - TODO: Implement with existing decision templates")
+}
+
+// Partial handlers - return HTML fragments for HTMX
+
+func renderDashboardStatsPartial(c *gin.Context) {
+	// TODO: Implement dashboard stats partial using existing dashboard_stats_partial.templ
+	c.String(200, "Dashboard Stats Partial - TODO: Implement with existing partial templates")
+}
+
+func renderQuickDecisionPartial(c *gin.Context) {
+	// TODO: Implement quick decision partial using existing quick_decision_partial.templ
+	c.String(200, "Quick Decision Partial - TODO: Implement with existing partial templates")
+}
+
+func renderRecentDecisionsPartial(c *gin.Context) {
+	// TODO: Implement recent decisions partial using existing recent_decisions_partial.templ
+	c.String(200, "Recent Decisions Partial - TODO: Implement with existing partial templates")
+}
+
+func renderDashboardContentPartial(c *gin.Context) {
+	// TODO: Implement dashboard content partial (main dashboard body without layout)
+	c.String(200, "Dashboard Content Partial - TODO: Implement")
+}
+
+func renderDashboardBelowFoldPartial(c *gin.Context) {
+	// TODO: Implement dashboard below fold content (lazy loaded sections)
+	c.String(200, "Dashboard Below Fold Partial - TODO: Implement")
+}
+
+func renderDashboardInsightsPartial(c *gin.Context) {
+	// TODO: Implement dashboard insights partial (performance metrics)
+	c.String(200, "Dashboard Insights Partial - TODO: Implement")
+}
+
+func renderFinanceOverviewPartial(c *gin.Context) {
+	// TODO: Implement finance overview partial using existing finance_summary_partial.templ
+	c.String(200, "Finance Overview Partial - TODO: Implement with existing partial templates")
+}
+
+func renderFinanceSummaryPartial(c *gin.Context) {
+	// TODO: Implement finance summary partial using existing finance_summary_partial.templ
+	c.String(200, "Finance Summary Partial - TODO: Implement with existing partial templates")
+}
+
+func renderIncomeListPartial(c *gin.Context) {
+	// TODO: Implement income list partial using existing income_list_partial.templ
+	c.String(200, "Income List Partial - TODO: Implement with existing partial templates")
+}
+
+func renderExpenseFormPartial(c *gin.Context) {
+	// TODO: Implement expense form partial using existing expense_form_partial.templ
+	c.String(200, "Expense Form Partial - TODO: Implement with existing partial templates")
+}
+
+func renderHealthProfilePartial(c *gin.Context) {
+	// TODO: Implement health profile partial content
+	c.String(200, "Health Profile Partial - TODO: Implement")
+}
+
+func renderHealthRiskGaugePartial(c *gin.Context) {
+	// TODO: Implement health risk gauge partial using existing health_risk_gauge_partial.templ
+	c.String(200, "Health Risk Gauge Partial - TODO: Implement with existing partial templates")
+}
+
+func renderConditionAddPartial(c *gin.Context) {
+	// TODO: Implement condition add partial using existing condition_add_partial.templ
+	c.String(200, "Condition Add Partial - TODO: Implement with existing partial templates")
+}
+
+func renderInsuranceCardPartial(c *gin.Context) {
+	// TODO: Implement insurance card partial using existing insurance_card_partial.templ
+	c.String(200, "Insurance Card Partial - TODO: Implement with existing partial templates")
+}
+
+func renderDecisionResultPartial(c *gin.Context) {
+	// TODO: Implement decision result partial using existing decision_result_partial.templ
+	c.String(200, "Decision Result Partial - TODO: Implement with existing partial templates")
+}
+
+func renderDecisionFilterPartial(c *gin.Context) {
+	// TODO: Implement decision filter partial using existing decision_filter_partial.templ
+	c.String(200, "Decision Filter Partial - TODO: Implement with existing partial templates")
 }
