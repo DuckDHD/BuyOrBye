@@ -8,7 +8,7 @@ import (
 
 // AuthService interface is defined in handlers package following consumer-defined principle
 // This interface is consumed by AuthHandler in this package
-type AuthService interface {
+type AuthServiceInterface interface {
 	// Login authenticates a user with email and password
 	// Returns a token pair on successful authentication
 	// Returns domain.ErrInvalidCredentials if credentials are invalid

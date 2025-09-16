@@ -3,11 +3,11 @@ package pages
 import (
 	"github.com/DuckDHD/BuyOrBye/internal/types"
 	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
-	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/partials"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
 )
 
-templ LoginPage(csrfToken string, errors []string) {
-	@layouts.Auth("Sign in to BuyOrBye", csrfToken) {
+templ LoginPage(dto types.LoginPageDTO) {
+	@layouts.Auth("Sign in to BuyOrBye", dto.Layout.CSRFToken) {
 		<div class="max-w-md w-full space-y-8">
 			<!-- Header -->
 			<div>
@@ -39,12 +39,12 @@ templ LoginPage(csrfToken string, errors []string) {
 				hx-swap="outerHTML"
 				hx-indicator="#login-loading"
 			>
-				<input type="hidden" name="csrf_token" value={ csrfToken }/>
+				<input type="hidden" name="csrf_token" value={ dto.Layout.CSRFToken }/>
 				
 				<div id="login-form" class="space-y-4">
 					<!-- Display Errors -->
-					if len(errors) > 0 {
-						@partials.AuthErrorDisplay(errors)
+					if dto.Error != nil {
+						@components.ErrorBanner(dto.Error.Message)
 					}
 
 					<!-- Email Field -->

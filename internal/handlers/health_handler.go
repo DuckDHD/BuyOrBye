@@ -9,17 +9,44 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
-	"github.com/DuckDHD/BuyOrBye/internal/dtos"
-	"github.com/DuckDHD/BuyOrBye/internal/services"
+	"github.com/DuckDHD/BuyOrBye/internal/types"
 )
+
+// HealthService is an alias to the services.HealthService interface
+// This handler acts as an adapter between DTOs and domain objects
+type HealthService interface {
+	// Profile operations
+	CreateProfile(ctx context.Context, profile *domain.HealthProfile) error
+	GetProfile(ctx context.Context, userID string) (*domain.HealthProfile, error)
+	UpdateProfile(ctx context.Context, profile *domain.HealthProfile) error
+
+	// Medical conditions
+	AddCondition(ctx context.Context, condition *domain.MedicalCondition) error
+	GetConditions(ctx context.Context, userID string) ([]domain.MedicalCondition, error)
+	UpdateCondition(ctx context.Context, condition *domain.MedicalCondition) error
+	RemoveCondition(ctx context.Context, userID, conditionID string) error
+
+	// Medical expenses
+	AddExpense(ctx context.Context, expense *domain.MedicalExpense) error
+	GetExpenses(ctx context.Context, userID string) ([]domain.MedicalExpense, error)
+	GetRecurringExpenses(ctx context.Context, userID string) ([]domain.MedicalExpense, error)
+
+	// Insurance policies
+	AddInsurancePolicy(ctx context.Context, policy *domain.InsurancePolicy) error
+	GetActivePolicies(ctx context.Context, userID string) ([]domain.InsurancePolicy, error)
+	UpdateDeductibleProgress(ctx context.Context, policyID string, amount float64) error
+
+	// Calculations & Analysis
+	CalculateHealthSummary(ctx context.Context, userID string) (*domain.HealthSummary, error)
+}
 
 // HealthHandler handles health-related HTTP requests
 type HealthHandler struct {
-	healthService services.HealthService
+	healthService HealthService
 }
 
 // NewHealthHandler creates a new health handler instance
-func NewHealthHandler(healthService services.HealthService) *HealthHandler {
+func NewHealthHandler(healthService HealthService) *HealthHandler {
 	return &HealthHandler{
 		healthService: healthService,
 	}
@@ -42,7 +69,7 @@ func (h *HealthHandler) getUserFromContext(c *gin.Context) (string, error) {
 
 // CreateProfile creates a new health profile
 func (h *HealthHandler) CreateProfile(c *gin.Context) {
-	var requestDTO dtos.CreateHealthProfileRequestDTO
+	var requestDTO types.CreateHealthProfileRequestDTO
 	
 	if err := c.ShouldBindJSON(&requestDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: " + err.Error()})
@@ -56,15 +83,11 @@ func (h *HealthHandler) CreateProfile(c *gin.Context) {
 		return
 	}
 	
-	// Ensure user can only create profile for themselves
-	if requestDTO.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot create profile for another user"})
-		return
-	}
-	
-	// Convert DTO to domain
-	profile := requestDTO.ToDomain()
-	
+	// User ID comes from authenticated context, not from request body
+
+	// Convert DTO to domain object
+	profile := requestDTO.ToDomain(userID)
+
 	// Create profile
 	ctx := context.Background()
 	if err := h.healthService.CreateProfile(ctx, profile); err != nil {
@@ -88,7 +111,7 @@ func (h *HealthHandler) GetProfile(c *gin.Context) {
 	}
 	
 	ctx := context.Background()
-	profile, err := h.healthService.GetProfile(ctx, userID)
+	responseDTO, err := h.healthService.GetProfile(ctx, userID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Health profile not found"})
@@ -97,17 +120,13 @@ func (h *HealthHandler) GetProfile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get profile: " + err.Error()})
 		return
 	}
-	
-	// Convert domain to DTO
-	var responseDTO dtos.HealthProfileResponseDTO
-	responseDTO.FromDomain(profile)
-	
+
 	c.JSON(http.StatusOK, responseDTO)
 }
 
 // UpdateProfile updates the user's health profile
 func (h *HealthHandler) UpdateProfile(c *gin.Context) {
-	var requestDTO dtos.UpdateHealthProfileRequestDTO
+	var requestDTO types.UpdateHealthProfileRequestDTO
 	
 	if err := c.ShouldBindJSON(&requestDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: " + err.Error()})
@@ -121,41 +140,23 @@ func (h *HealthHandler) UpdateProfile(c *gin.Context) {
 	}
 	
 	ctx := context.Background()
-	
+
 	// Get existing profile
 	existingProfile, err := h.healthService.GetProfile(ctx, userID)
 	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Health profile not found"})
+		return
+	}
+
+	// Apply updates to existing profile
+	requestDTO.ApplyUpdates(existingProfile)
+
+	// Update profile
+	if err := h.healthService.UpdateProfile(ctx, existingProfile); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Health profile not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get profile: " + err.Error()})
-		return
-	}
-	
-	// Update fields that were provided
-	if requestDTO.Age != 0 {
-		existingProfile.Age = requestDTO.Age
-	}
-	if requestDTO.Gender != "" {
-		existingProfile.Gender = requestDTO.Gender
-	}
-	if requestDTO.Height != 0 {
-		existingProfile.Height = requestDTO.Height
-	}
-	if requestDTO.Weight != 0 {
-		existingProfile.Weight = requestDTO.Weight
-	}
-	if requestDTO.FamilySize != 0 {
-		existingProfile.FamilySize = requestDTO.FamilySize
-	}
-	existingProfile.HasChronicConditions = requestDTO.HasChronicConditions
-	if requestDTO.EmergencyFundHealth >= 0 {
-		existingProfile.EmergencyFundHealth = requestDTO.EmergencyFundHealth
-	}
-	
-	// Update profile
-	if err := h.healthService.UpdateProfile(ctx, existingProfile); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile: " + err.Error()})
 		return
 	}
@@ -165,7 +166,7 @@ func (h *HealthHandler) UpdateProfile(c *gin.Context) {
 
 // AddCondition adds a new medical condition
 func (h *HealthHandler) AddCondition(c *gin.Context) {
-	var requestDTO dtos.CreateMedicalConditionRequestDTO
+	var requestDTO types.CreateMedicalConditionRequestDTO
 	
 	if err := c.ShouldBindJSON(&requestDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: " + err.Error()})
@@ -178,15 +179,22 @@ func (h *HealthHandler) AddCondition(c *gin.Context) {
 		return
 	}
 	
-	// Ensure user can only add condition for themselves
-	if requestDTO.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot add condition for another user"})
+	// User ID comes from authenticated context, not from request body
+
+	// First, get user's profile to obtain profileID
+	profile, err := h.healthService.GetProfile(context.Background(), userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Profile not found. Please create health profile first."})
 		return
 	}
-	
-	// Convert DTO to domain
-	condition := requestDTO.ToDomain()
-	
+
+	// Convert DTO to domain object
+	condition, err := requestDTO.ToDomain(userID, profile.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format: " + err.Error()})
+		return
+	}
+
 	ctx := context.Background()
 	if err := h.healthService.AddCondition(ctx, condition); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add condition: " + err.Error()})
@@ -205,23 +213,12 @@ func (h *HealthHandler) GetConditions(c *gin.Context) {
 	}
 	
 	ctx := context.Background()
-	conditions, err := h.healthService.GetConditions(ctx, userID)
+	response, err := h.healthService.GetConditions(ctx, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get conditions: " + err.Error()})
 		return
 	}
-	
-	// Convert domain to DTOs
-	conditionDTOs := make([]dtos.MedicalConditionResponseDTO, len(conditions))
-	for i, condition := range conditions {
-		conditionDTOs[i].FromDomain(&condition)
-	}
-	
-	response := dtos.MedicalConditionListResponseDTO{
-		Conditions: conditionDTOs,
-		Total:      len(conditionDTOs),
-	}
-	
+
 	c.JSON(http.StatusOK, response)
 }
 
@@ -233,7 +230,7 @@ func (h *HealthHandler) UpdateCondition(c *gin.Context) {
 		return
 	}
 	
-	var requestDTO dtos.UpdateMedicalConditionRequestDTO
+	var requestDTO types.UpdateMedicalConditionRequestDTO
 	if err := c.ShouldBindJSON(&requestDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: " + err.Error()})
 		return
@@ -245,34 +242,33 @@ func (h *HealthHandler) UpdateCondition(c *gin.Context) {
 		return
 	}
 	
-	// For now, we'll create a basic condition with the ID and user for update
-	// In a real implementation, you'd first retrieve the existing condition
-	condition := &domain.MedicalCondition{
-		ID:     conditionID,
-		UserID: userID,
-	}
-	
-	// Update fields that were provided
-	if requestDTO.Name != "" {
-		condition.Name = requestDTO.Name
-	}
-	if requestDTO.Category != "" {
-		condition.Category = requestDTO.Category
-	}
-	if requestDTO.Severity != "" {
-		condition.Severity = requestDTO.Severity
-	}
-	condition.RequiresMedication = requestDTO.RequiresMedication
-	if requestDTO.MonthlyMedCost >= 0 {
-		condition.MonthlyMedCost = requestDTO.MonthlyMedCost
-	}
-	if requestDTO.RiskFactor >= 0 && requestDTO.RiskFactor <= 1 {
-		condition.RiskFactor = requestDTO.RiskFactor
-	}
-	condition.IsActive = requestDTO.IsActive
-	
 	ctx := context.Background()
-	if err := h.healthService.UpdateCondition(ctx, condition); err != nil {
+
+	// Get existing conditions to find the one to update
+	conditions, err := h.healthService.GetConditions(ctx, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve conditions"})
+		return
+	}
+
+	// Find the condition to update
+	var existingCondition *domain.MedicalCondition
+	for i, condition := range conditions {
+		if condition.ID == conditionID {
+			existingCondition = &conditions[i]
+			break
+		}
+	}
+
+	if existingCondition == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Condition not found"})
+		return
+	}
+
+	// Apply updates to existing condition
+	requestDTO.ApplyUpdates(existingCondition)
+
+	if err := h.healthService.UpdateCondition(ctx, existingCondition); err != nil {
 		if strings.Contains(err.Error(), "not authorized") {
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 			return
@@ -317,7 +313,7 @@ func (h *HealthHandler) RemoveCondition(c *gin.Context) {
 
 // AddExpense adds a new medical expense
 func (h *HealthHandler) AddExpense(c *gin.Context) {
-	var requestDTO dtos.CreateMedicalExpenseRequestDTO
+	var requestDTO types.CreateMedicalExpenseRequestDTO
 	
 	if err := c.ShouldBindJSON(&requestDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: " + err.Error()})
@@ -330,15 +326,22 @@ func (h *HealthHandler) AddExpense(c *gin.Context) {
 		return
 	}
 	
-	// Ensure user can only add expense for themselves
-	if requestDTO.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot add expense for another user"})
+	// User ID comes from authenticated context, not from request body
+
+	// First, get user's profile to obtain profileID
+	profile, err := h.healthService.GetProfile(context.Background(), userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Profile not found. Please create health profile first."})
 		return
 	}
-	
-	// Convert DTO to domain
-	expense := requestDTO.ToDomain()
-	
+
+	// Convert DTO to domain object
+	expense, err := requestDTO.ToDomain(userID, profile.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format: " + err.Error()})
+		return
+	}
+
 	ctx := context.Background()
 	if err := h.healthService.AddExpense(ctx, expense); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add expense: " + err.Error()})
@@ -357,23 +360,12 @@ func (h *HealthHandler) GetExpenses(c *gin.Context) {
 	}
 	
 	ctx := context.Background()
-	expenses, err := h.healthService.GetExpenses(ctx, userID)
+	response, err := h.healthService.GetExpenses(ctx, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get expenses: " + err.Error()})
 		return
 	}
-	
-	// Convert domain to DTOs
-	expenseDTOs := make([]dtos.MedicalExpenseResponseDTO, len(expenses))
-	for i, expense := range expenses {
-		expenseDTOs[i].FromDomain(&expense)
-	}
-	
-	response := dtos.MedicalExpenseListResponseDTO{
-		Expenses: expenseDTOs,
-		Total:    len(expenseDTOs),
-	}
-	
+
 	c.JSON(http.StatusOK, response)
 }
 
@@ -386,29 +378,18 @@ func (h *HealthHandler) GetRecurringExpenses(c *gin.Context) {
 	}
 	
 	ctx := context.Background()
-	expenses, err := h.healthService.GetRecurringExpenses(ctx, userID)
+	response, err := h.healthService.GetRecurringExpenses(ctx, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get recurring expenses: " + err.Error()})
 		return
 	}
-	
-	// Convert domain to DTOs
-	expenseDTOs := make([]dtos.MedicalExpenseResponseDTO, len(expenses))
-	for i, expense := range expenses {
-		expenseDTOs[i].FromDomain(&expense)
-	}
-	
-	response := dtos.MedicalExpenseListResponseDTO{
-		Expenses: expenseDTOs,
-		Total:    len(expenseDTOs),
-	}
-	
+
 	c.JSON(http.StatusOK, response)
 }
 
 // AddInsurancePolicy adds a new insurance policy
 func (h *HealthHandler) AddInsurancePolicy(c *gin.Context) {
-	var requestDTO dtos.CreateInsurancePolicyRequestDTO
+	var requestDTO types.CreateInsurancePolicyRequestDTO
 	
 	if err := c.ShouldBindJSON(&requestDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: " + err.Error()})
@@ -421,15 +402,22 @@ func (h *HealthHandler) AddInsurancePolicy(c *gin.Context) {
 		return
 	}
 	
-	// Ensure user can only add policy for themselves
-	if requestDTO.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot add policy for another user"})
+	// User ID comes from authenticated context, not from request body
+
+	// First, get user's profile to obtain profileID
+	profile, err := h.healthService.GetProfile(context.Background(), userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Profile not found. Please create health profile first."})
 		return
 	}
-	
-	// Convert DTO to domain
-	policy := requestDTO.ToDomain()
-	
+
+	// Convert DTO to domain object
+	policy, err := requestDTO.ToDomain(userID, profile.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format: " + err.Error()})
+		return
+	}
+
 	ctx := context.Background()
 	if err := h.healthService.AddInsurancePolicy(ctx, policy); err != nil {
 		if strings.Contains(err.Error(), "already exists") {
@@ -452,23 +440,12 @@ func (h *HealthHandler) GetActivePolicies(c *gin.Context) {
 	}
 	
 	ctx := context.Background()
-	policies, err := h.healthService.GetActivePolicies(ctx, userID)
+	response, err := h.healthService.GetActivePolicies(ctx, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get policies: " + err.Error()})
 		return
 	}
-	
-	// Convert domain to DTOs
-	policyDTOs := make([]dtos.InsurancePolicyResponseDTO, len(policies))
-	for i, policy := range policies {
-		policyDTOs[i].FromDomain(&policy)
-	}
-	
-	response := dtos.InsurancePolicyListResponseDTO{
-		Policies: policyDTOs,
-		Total:    len(policyDTOs),
-	}
-	
+
 	c.JSON(http.StatusOK, response)
 }
 
@@ -480,7 +457,7 @@ func (h *HealthHandler) UpdateDeductibleProgress(c *gin.Context) {
 		return
 	}
 	
-	var requestDTO dtos.UpdateDeductibleRequestDTO
+	var requestDTO types.UpdateDeductibleRequestDTO
 	if err := c.ShouldBindJSON(&requestDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: " + err.Error()})
 		return
@@ -518,7 +495,7 @@ func (h *HealthHandler) GetHealthSummary(c *gin.Context) {
 	}
 	
 	ctx := context.Background()
-	summary, err := h.healthService.CalculateHealthSummary(ctx, userID)
+	responseDTO, err := h.healthService.CalculateHealthSummary(ctx, userID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Health profile not found"})
@@ -527,11 +504,7 @@ func (h *HealthHandler) GetHealthSummary(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to calculate health summary: " + err.Error()})
 		return
 	}
-	
-	// Convert domain to DTO
-	var responseDTO dtos.HealthSummaryResponseDTO
-	responseDTO.FromDomain(summary)
-	
+
 	c.JSON(http.StatusOK, responseDTO)
 }
 
@@ -558,7 +531,7 @@ func (h *HealthHandler) CalculateRisk(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to calculate risk: " + err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"risk_score": summary.HealthRiskScore,
 		"risk_level": summary.HealthRiskLevel,

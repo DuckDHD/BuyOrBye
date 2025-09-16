@@ -7,8 +7,8 @@ import (
 	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/partials"
 )
 
-templ DecisionHistoryPage(user *types.UserResponseDTO, csrfToken string, filters *DecisionFiltersDTO) {
-	@layouts.App("Decision History", csrfToken, user, "/decisions") {
+templ DecisionHistoryPage(dto types.DecisionHistoryPageDTO) {
+	@layouts.App("Decision History", dto.Layout.CSRFToken, dto.Layout.User, "/decisions") {
 		<div class="space-y-6" x-data="decisionHistory()">
 			<!-- Page Header -->
 			<div class="flex items-center justify-between">
@@ -73,7 +73,7 @@ templ DecisionHistoryPage(user *types.UserResponseDTO, csrfToken string, filters
 							type="text" 
 							class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
 							placeholder="Search by item name, category, or decision type..."
-							value={ filters.Search }
+							value={ dto.Filters.Search }
 							hx-get="/decisions"
 							hx-target="#decisions-list"
 							hx-swap="innerHTML"
@@ -98,7 +98,7 @@ templ DecisionHistoryPage(user *types.UserResponseDTO, csrfToken string, filters
 					hx-trigger="load"
 					hx-swap="innerHTML"
 				>
-					@partials.DecisionFilters(filters)
+					@partials.DecisionFilters(&dto.Filters)
 				</div>
 			</div>
 
@@ -183,7 +183,7 @@ templ DecisionHistoryPage(user *types.UserResponseDTO, csrfToken string, filters
 		<script>
 			function decisionHistory() {
 				return {
-					searchQuery: '{ filters.Search }',
+					searchQuery: '{ dto.Filters.Search }',
 					viewMode: 'list',
 
 					getFilterParams() {
@@ -237,18 +237,4 @@ templ DecisionHistoryPage(user *types.UserResponseDTO, csrfToken string, filters
 			}
 		</script>
 	}
-}
-
-type DecisionFiltersDTO struct {
-	Search     string
-	Decision   string
-	Category   string
-	DateFrom   string
-	DateTo     string
-	MinCost    string
-	MaxCost    string
-	SortBy     string
-	SortOrder  string
-	Page       int
-	Limit      int
 }

@@ -16,7 +16,7 @@ import (
 
 	"github.com/DuckDHD/BuyOrBye/internal/database"
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
-	"github.com/DuckDHD/BuyOrBye/internal/dtos"
+	"github.com/DuckDHD/BuyOrBye/internal/types"
 	"github.com/DuckDHD/BuyOrBye/internal/handlers"
 	"github.com/DuckDHD/BuyOrBye/internal/models"
 	"github.com/DuckDHD/BuyOrBye/internal/repositories"
@@ -72,7 +72,7 @@ func (s *HealthFlowTestSuite) TestCompleteHealthFlow() {
 	user.Register(t, s.client)
 	
 	// Step 2: Create Health Profile
-	profileData := dtos.CreateHealthProfileRequestDTO{
+	profileData := types.CreateHealthProfileRequestDTO{
 		Age:        35,
 		Gender:     "male",
 		Height:     175.0, // 175cm
@@ -83,7 +83,7 @@ func (s *HealthFlowTestSuite) TestCompleteHealthFlow() {
 	resp, body := s.client.POST(t, "/api/v1/health/profile", profileData)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "Failed to create health profile: %s", string(body))
 	
-	var profileResp dtos.HealthProfileResponseDTO
+	var profileResp types.HealthProfileResponseDTO
 	err := json.Unmarshal(body, &profileResp)
 	require.NoError(t, err, "Failed to parse profile response")
 	
@@ -91,7 +91,7 @@ func (s *HealthFlowTestSuite) TestCompleteHealthFlow() {
 	assert.InDelta(t, 26.12, profileResp.BMI, 0.1, "BMI should be calculated correctly")
 	
 	// Step 3: Add Medical Conditions
-	conditions := []dtos.CreateMedicalConditionRequestDTO{
+	conditions := []types.CreateMedicalConditionRequestDTO{
 		{
 			Name:               "Hypertension",
 			Category:           "chronic",
@@ -127,7 +127,7 @@ func (s *HealthFlowTestSuite) TestCompleteHealthFlow() {
 	assert.InDelta(t, 28, updatedRiskScore, 5, "Risk score should be around 28 points")
 	
 	// Step 5: Add Medical Expenses
-	expenses := []dtos.CreateMedicalExpenseRequestDTO{
+	expenses := []types.CreateMedicalExpenseRequestDTO{
 		{
 			Amount:      85.00,
 			Category:    "doctor_visit",
@@ -165,7 +165,7 @@ func (s *HealthFlowTestSuite) TestCompleteHealthFlow() {
 	resp, body = s.client.GET(t, "/api/v1/health/summary")
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Failed to get health summary")
 	
-	var summary dtos.HealthSummaryResponseDTO
+	var summary types.HealthSummaryResponseDTO
 	err = json.Unmarshal(body, &summary)
 	require.NoError(t, err, "Failed to parse health summary")
 	
@@ -193,7 +193,7 @@ func (s *HealthFlowTestSuite) TestInsuranceCoverageFlow() {
 	user := testutils.NewTestUser("insurance.user@example.com", "Insurance User", "password123")
 	user.Register(t, s.client)
 	
-	profileData := dtos.CreateHealthProfileRequestDTO{
+	profileData := types.CreateHealthProfileRequestDTO{
 		Age:        42,
 		Gender:     "female",
 		Height:     165.0,
@@ -205,7 +205,7 @@ func (s *HealthFlowTestSuite) TestInsuranceCoverageFlow() {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, "Failed to create profile")
 	
 	// Step 1: Add Insurance Policy
-	policyData := dtos.CreateInsurancePolicyRequestDTO{
+	policyData := types.CreateInsurancePolicyRequestDTO{
 		Provider:           "Blue Cross Blue Shield",
 		PolicyNumber:       "BCBS-12345678",
 		Type:               "health",
@@ -221,7 +221,7 @@ func (s *HealthFlowTestSuite) TestInsuranceCoverageFlow() {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "Failed to add insurance policy: %s", string(body))
 	
 	// Step 2: Add Medical Expense (covered by insurance)
-	expenseData := dtos.CreateMedicalExpenseRequestDTO{
+	expenseData := types.CreateMedicalExpenseRequestDTO{
 		Amount:           1200.00,
 		Category:         "hospital",
 		Description:      "Emergency room visit",
@@ -238,7 +238,7 @@ func (s *HealthFlowTestSuite) TestInsuranceCoverageFlow() {
 	resp, body = s.client.GET(t, "/api/v1/health/summary")
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	
-	var summary dtos.HealthSummaryResponseDTO
+	var summary types.HealthSummaryResponseDTO
 	err := json.Unmarshal(body, &summary)
 	require.NoError(t, err)
 	
@@ -250,7 +250,7 @@ func (s *HealthFlowTestSuite) TestInsuranceCoverageFlow() {
 	assert.Less(t, summary.AnnualDeductibleRemaining, 2000.00, "Some deductible should have been applied")
 	
 	// Step 4: Test High-Cost Medical Expense with Insurance
-	highCostExpense := dtos.CreateMedicalExpenseRequestDTO{
+	highCostExpense := types.CreateMedicalExpenseRequestDTO{
 		Amount:      5000.00,
 		Category:    "hospital",
 		Description: "Surgical procedure",
@@ -283,7 +283,7 @@ func (s *HealthFlowTestSuite) TestProfileUniquenessConstraint() {
 	user.Register(t, s.client)
 	
 	// Step 1: Create first health profile
-	profileData := dtos.CreateHealthProfileRequestDTO{
+	profileData := types.CreateHealthProfileRequestDTO{
 		Age:        30,
 		Gender:     "other",
 		Height:     170.0,
@@ -295,7 +295,7 @@ func (s *HealthFlowTestSuite) TestProfileUniquenessConstraint() {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "First profile should be created successfully")
 	
 	// Step 2: Attempt to create second health profile
-	secondProfileData := dtos.CreateHealthProfileRequestDTO{
+	secondProfileData := types.CreateHealthProfileRequestDTO{
 		Age:        31,
 		Gender:     "male",
 		Height:     180.0,
@@ -310,7 +310,7 @@ func (s *HealthFlowTestSuite) TestProfileUniquenessConstraint() {
 	assert.Contains(t, string(body), "already has a health profile", "Error message should indicate constraint violation")
 	
 	// Step 3: Verify profile update works (replacing existing profile)
-	updateData := dtos.UpdateHealthProfileRequestDTO{
+	updateData := types.UpdateHealthProfileRequestDTO{
 		Age:        32,
 		Gender:     "female",
 		Height:     168.0,
@@ -321,7 +321,7 @@ func (s *HealthFlowTestSuite) TestProfileUniquenessConstraint() {
 	resp, body = s.client.PUT(t, "/api/v1/health/profile", updateData)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Profile update should succeed: %s", string(body))
 	
-	var updatedProfile dtos.HealthProfileResponseDTO
+	var updatedProfile types.HealthProfileResponseDTO
 	err := json.Unmarshal(body, &updatedProfile)
 	require.NoError(t, err)
 	
@@ -338,7 +338,7 @@ func (s *HealthFlowTestSuite) TestCascadeDeleteFunctionality() {
 	user.Register(t, s.client)
 	
 	// Create health profile
-	profileData := dtos.CreateHealthProfileRequestDTO{
+	profileData := types.CreateHealthProfileRequestDTO{
 		Age:        45,
 		Gender:     "male",
 		Height:     178.0,
@@ -350,7 +350,7 @@ func (s *HealthFlowTestSuite) TestCascadeDeleteFunctionality() {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, "Profile creation should succeed")
 	
 	// Add medical conditions
-	conditionData := dtos.CreateMedicalConditionRequestDTO{
+	conditionData := types.CreateMedicalConditionRequestDTO{
 		Name:               "Asthma",
 		Category:           "chronic",
 		Severity:           "mild",
@@ -363,7 +363,7 @@ func (s *HealthFlowTestSuite) TestCascadeDeleteFunctionality() {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, "Condition creation should succeed")
 	
 	// Add medical expenses
-	expenseData := dtos.CreateMedicalExpenseRequestDTO{
+	expenseData := types.CreateMedicalExpenseRequestDTO{
 		Amount:      75.00,
 		Category:    "medication",
 		Description: "Asthma inhaler",
@@ -377,7 +377,7 @@ func (s *HealthFlowTestSuite) TestCascadeDeleteFunctionality() {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, "Expense creation should succeed")
 	
 	// Add insurance policy
-	policyData := dtos.CreateInsurancePolicyRequestDTO{
+	policyData := types.CreateInsurancePolicyRequestDTO{
 		Provider:           "Aetna Health",
 		PolicyNumber:       "AETNA-87654321",
 		Type:               "health",
@@ -416,21 +416,21 @@ func (s *HealthFlowTestSuite) TestCascadeDeleteFunctionality() {
 	resp, body = s.client.GET(t, "/api/v1/health/conditions")
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Conditions endpoint should be accessible")
 	// Parse response to check empty array
-	var conditions []dtos.MedicalConditionResponseDTO
+	var conditions []types.MedicalConditionResponseDTO
 	err := json.Unmarshal(body, &conditions)
 	require.NoError(t, err)
 	assert.Empty(t, conditions, "Conditions should be empty after profile deletion")
 	
 	resp, body = s.client.GET(t, "/api/v1/health/expenses")
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Expenses endpoint should be accessible")
-	var expenses []dtos.MedicalExpenseResponseDTO
+	var expenses []types.MedicalExpenseResponseDTO
 	err = json.Unmarshal(body, &expenses)
 	require.NoError(t, err)
 	assert.Empty(t, expenses, "Expenses should be empty after profile deletion")
 	
 	resp, body = s.client.GET(t, "/api/v1/health/policies")
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Policies endpoint should be accessible")
-	var policies []dtos.InsurancePolicyResponseDTO
+	var policies []types.InsurancePolicyResponseDTO
 	err = json.Unmarshal(body, &policies)
 	require.NoError(t, err)
 	assert.Empty(t, policies, "Policies should be empty after profile deletion")
@@ -445,7 +445,7 @@ func (s *HealthFlowTestSuite) TestRiskScoreTransitions() {
 	user.Register(t, s.client)
 	
 	// Create healthy young profile (low risk baseline)
-	profileData := dtos.CreateHealthProfileRequestDTO{
+	profileData := types.CreateHealthProfileRequestDTO{
 		Age:        25,
 		Gender:     "female",
 		Height:     165.0,
@@ -461,7 +461,7 @@ func (s *HealthFlowTestSuite) TestRiskScoreTransitions() {
 	assert.LessOrEqual(t, baselineRisk, 10, "Young healthy person should have low risk score")
 	
 	// Step 1: Add mild condition
-	mildCondition := dtos.CreateMedicalConditionRequestDTO{
+	mildCondition := types.CreateMedicalConditionRequestDTO{
 		Name:               "Seasonal Allergies",
 		Category:           "preventive",
 		Severity:           "mild",
@@ -478,7 +478,7 @@ func (s *HealthFlowTestSuite) TestRiskScoreTransitions() {
 	assert.LessOrEqual(t, mildRisk, baselineRisk+2, "Preventive mild condition should barely affect risk")
 	
 	// Step 2: Add moderate chronic condition
-	moderateCondition := dtos.CreateMedicalConditionRequestDTO{
+	moderateCondition := types.CreateMedicalConditionRequestDTO{
 		Name:               "Hypothyroidism",
 		Category:           "chronic",
 		Severity:           "moderate",
@@ -495,7 +495,7 @@ func (s *HealthFlowTestSuite) TestRiskScoreTransitions() {
 	assert.InDelta(t, mildRisk+5, moderateRisk, 3, "Moderate condition should add ~5 risk points")
 	
 	// Step 3: Add severe chronic condition
-	severeCondition := dtos.CreateMedicalConditionRequestDTO{
+	severeCondition := types.CreateMedicalConditionRequestDTO{
 		Name:               "Chronic Kidney Disease",
 		Category:           "chronic",
 		Severity:           "severe",
@@ -512,7 +512,7 @@ func (s *HealthFlowTestSuite) TestRiskScoreTransitions() {
 	assert.InDelta(t, moderateRisk+10, severeRisk, 3, "Severe condition should add ~10 risk points")
 	
 	// Step 4: Add critical condition (should push to high risk)
-	criticalCondition := dtos.CreateMedicalConditionRequestDTO{
+	criticalCondition := types.CreateMedicalConditionRequestDTO{
 		Name:               "Advanced Heart Disease",
 		Category:           "chronic",
 		Severity:           "critical",
@@ -532,7 +532,7 @@ func (s *HealthFlowTestSuite) TestRiskScoreTransitions() {
 	resp, body = s.client.GET(t, "/api/v1/health/summary")
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	
-	var summary dtos.HealthSummaryResponseDTO
+	var summary types.HealthSummaryResponseDTO
 	err := json.Unmarshal(body, &summary)
 	require.NoError(t, err)
 	
@@ -553,7 +553,7 @@ func (s *HealthFlowTestSuite) TestFinancialVulnerabilityAssessment() {
 	user.Register(t, s.client)
 	
 	// Create profile
-	profileData := dtos.CreateHealthProfileRequestDTO{
+	profileData := types.CreateHealthProfileRequestDTO{
 		Age:        55,
 		Gender:     "male",
 		Height:     175.0,
@@ -565,7 +565,7 @@ func (s *HealthFlowTestSuite) TestFinancialVulnerabilityAssessment() {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, "Profile creation should succeed")
 	
 	// Test Scenario 1: Low medical expenses (secure)
-	lowExpenses := []dtos.CreateMedicalExpenseRequestDTO{
+	lowExpenses := []types.CreateMedicalExpenseRequestDTO{
 		{
 			Amount:      50.00,
 			Category:    "doctor_visit",
@@ -586,7 +586,7 @@ func (s *HealthFlowTestSuite) TestFinancialVulnerabilityAssessment() {
 	resp, body = s.client.GET(t, "/api/v1/health/summary")
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	
-	var lowSummary dtos.HealthSummaryResponseDTO
+	var lowSummary types.HealthSummaryResponseDTO
 	err := json.Unmarshal(body, &lowSummary)
 	require.NoError(t, err)
 	
@@ -600,7 +600,7 @@ func (s *HealthFlowTestSuite) TestFinancialVulnerabilityAssessment() {
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	
 	// Test Scenario 2: High medical expenses (vulnerable/critical)
-	highExpenses := []dtos.CreateMedicalExpenseRequestDTO{
+	highExpenses := []types.CreateMedicalExpenseRequestDTO{
 		{
 			Amount:      800.00,
 			Category:    "medication",
@@ -640,7 +640,7 @@ func (s *HealthFlowTestSuite) TestFinancialVulnerabilityAssessment() {
 	resp, body = s.client.GET(t, "/api/v1/health/summary")
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	
-	var highSummary dtos.HealthSummaryResponseDTO
+	var highSummary types.HealthSummaryResponseDTO
 	err = json.Unmarshal(body, &highSummary)
 	require.NoError(t, err)
 	
@@ -659,7 +659,7 @@ func (s *HealthFlowTestSuite) getHealthRiskScore(t *testing.T, endpoint string) 
 	resp, body := s.client.GET(t, endpoint)
 	require.Equal(t, http.StatusOK, resp.StatusCode, "Summary endpoint should be accessible")
 	
-	var summary dtos.HealthSummaryResponseDTO
+	var summary types.HealthSummaryResponseDTO
 	err := json.Unmarshal(body, &summary)
 	require.NoError(t, err, "Should parse summary response")
 	
@@ -679,7 +679,7 @@ func TestHealthFlow_CompleteUserJourney_Success(t *testing.T) {
 	userID := uuid.New()
 	
 	// Step 1: Create Health Profile
-	profileReq := dtos.HealthProfileRequestDTO{
+	profileReq := types.HealthProfileRequestDTO{
 		UserID: userID,
 		Age:    35,
 		Gender: "male",
@@ -695,13 +695,13 @@ func TestHealthFlow_CompleteUserJourney_Success(t *testing.T) {
 
 	require.Equal(t, http.StatusCreated, w1.Code)
 	
-	var profileResp dtos.HealthProfileResponseDTO
+	var profileResp types.HealthProfileResponseDTO
 	err := json.Unmarshal(w1.Body.Bytes(), &profileResp)
 	require.NoError(t, err)
 	profileID := profileResp.ID
 
 	// Step 2: Add Medical Conditions
-	conditions := []dtos.MedicalConditionRequestDTO{
+	conditions := []types.MedicalConditionRequestDTO{
 		{
 			ProfileID:   profileID,
 			Name:        "Hypertension",
@@ -727,14 +727,14 @@ func TestHealthFlow_CompleteUserJourney_Success(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusCreated, w.Code)
-		var condResp dtos.MedicalConditionResponseDTO
+		var condResp types.MedicalConditionResponseDTO
 		err := json.Unmarshal(w.Body.Bytes(), &condResp)
 		require.NoError(t, err)
 		conditionIDs = append(conditionIDs, condResp.ID)
 	}
 
 	// Step 3: Add Insurance Policy
-	policyReq := dtos.InsurancePolicyRequestDTO{
+	policyReq := types.InsurancePolicyRequestDTO{
 		ProfileID:        profileID,
 		Provider:         "HealthCorp Insurance",
 		PolicyNumber:     "HC-2024-001",
@@ -754,13 +754,13 @@ func TestHealthFlow_CompleteUserJourney_Success(t *testing.T) {
 	router.ServeHTTP(w3, req3)
 
 	require.Equal(t, http.StatusCreated, w3.Code)
-	var policyResp dtos.InsurancePolicyResponseDTO
+	var policyResp types.InsurancePolicyResponseDTO
 	err = json.Unmarshal(w3.Body.Bytes(), &policyResp)
 	require.NoError(t, err)
 	policyID := policyResp.ID
 
 	// Step 4: Add Medical Expenses
-	expenses := []dtos.MedicalExpenseRequestDTO{
+	expenses := []types.MedicalExpenseRequestDTO{
 		{
 			ProfileID:     profileID,
 			ConditionID:   &conditionIDs[0],
@@ -805,7 +805,7 @@ func TestHealthFlow_CompleteUserJourney_Success(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusCreated, w.Code)
-		var expResp dtos.MedicalExpenseResponseDTO
+		var expResp types.MedicalExpenseResponseDTO
 		err := json.Unmarshal(w.Body.Bytes(), &expResp)
 		require.NoError(t, err)
 		expenseIDs = append(expenseIDs, expResp.ID)
@@ -833,7 +833,7 @@ func TestHealthFlow_CompleteUserJourney_Success(t *testing.T) {
 	router.ServeHTTP(w6, req6)
 
 	require.Equal(t, http.StatusOK, w6.Code)
-	var summaryResp dtos.HealthSummaryResponseDTO
+	var summaryResp types.HealthSummaryResponseDTO
 	err = json.Unmarshal(w6.Body.Bytes(), &summaryResp)
 	require.NoError(t, err)
 
@@ -856,7 +856,7 @@ func TestHealthFlow_InsuranceCoverageApplication_Success(t *testing.T) {
 	userID := uuid.New()
 
 	// Create profile
-	profileReq := dtos.HealthProfileRequestDTO{
+	profileReq := types.HealthProfileRequestDTO{
 		UserID: userID,
 		Age:    28,
 		Gender: "female",
@@ -871,12 +871,12 @@ func TestHealthFlow_InsuranceCoverageApplication_Success(t *testing.T) {
 	router.ServeHTTP(w1, req1)
 
 	require.Equal(t, http.StatusCreated, w1.Code)
-	var profileResp dtos.HealthProfileResponseDTO
+	var profileResp types.HealthProfileResponseDTO
 	json.Unmarshal(w1.Body.Bytes(), &profileResp)
 	profileID := profileResp.ID
 
 	// Add insurance policy with specific coverage
-	policyReq := dtos.InsurancePolicyRequestDTO{
+	policyReq := types.InsurancePolicyRequestDTO{
 		ProfileID:        profileID,
 		Provider:         "Premium Health",
 		PolicyNumber:     "PH-2024-TEST",
@@ -896,12 +896,12 @@ func TestHealthFlow_InsuranceCoverageApplication_Success(t *testing.T) {
 	router.ServeHTTP(w2, req2)
 
 	require.Equal(t, http.StatusCreated, w2.Code)
-	var policyResp dtos.InsurancePolicyResponseDTO
+	var policyResp types.InsurancePolicyResponseDTO
 	json.Unmarshal(w2.Body.Bytes(), &policyResp)
 	policyID := policyResp.ID
 
 	// Add expense that should be covered
-	expenseReq := dtos.MedicalExpenseRequestDTO{
+	expenseReq := types.MedicalExpenseRequestDTO{
 		ProfileID:     profileID,
 		PolicyID:      &policyID,
 		Description:   "Annual health checkup",
@@ -920,7 +920,7 @@ func TestHealthFlow_InsuranceCoverageApplication_Success(t *testing.T) {
 	router.ServeHTTP(w3, req3)
 
 	require.Equal(t, http.StatusCreated, w3.Code)
-	var expenseResp dtos.MedicalExpenseResponseDTO
+	var expenseResp types.MedicalExpenseResponseDTO
 	json.Unmarshal(w3.Body.Bytes(), &expenseResp)
 
 	// Verify coverage was applied correctly
@@ -942,7 +942,7 @@ func TestHealthFlow_ProfileUniqueness_ShouldFail(t *testing.T) {
 	userID := uuid.New()
 
 	// Create first profile
-	profileReq := dtos.HealthProfileRequestDTO{
+	profileReq := types.HealthProfileRequestDTO{
 		UserID: userID,
 		Age:    30,
 		Gender: "male",
@@ -978,7 +978,7 @@ func TestHealthFlow_CascadeDelete_Success(t *testing.T) {
 	userID := uuid.New()
 
 	// Create complete health profile with all related data
-	profileReq := dtos.HealthProfileRequestDTO{
+	profileReq := types.HealthProfileRequestDTO{
 		UserID: userID,
 		Age:    45,
 		Gender: "female",
@@ -993,12 +993,12 @@ func TestHealthFlow_CascadeDelete_Success(t *testing.T) {
 	router.ServeHTTP(w1, req1)
 
 	require.Equal(t, http.StatusCreated, w1.Code)
-	var profileResp dtos.HealthProfileResponseDTO
+	var profileResp types.HealthProfileResponseDTO
 	json.Unmarshal(w1.Body.Bytes(), &profileResp)
 	profileID := profileResp.ID
 
 	// Add condition
-	conditionReq := dtos.MedicalConditionRequestDTO{
+	conditionReq := types.MedicalConditionRequestDTO{
 		ProfileID:   profileID,
 		Name:        "Test Condition",
 		Severity:    "mild",
@@ -1014,7 +1014,7 @@ func TestHealthFlow_CascadeDelete_Success(t *testing.T) {
 	require.Equal(t, http.StatusCreated, w2.Code)
 
 	// Add policy
-	policyReq := dtos.InsurancePolicyRequestDTO{
+	policyReq := types.InsurancePolicyRequestDTO{
 		ProfileID:      profileID,
 		Provider:       "Test Insurance",
 		PolicyNumber:   "TEST-001",
@@ -1035,7 +1035,7 @@ func TestHealthFlow_CascadeDelete_Success(t *testing.T) {
 	require.Equal(t, http.StatusCreated, w3.Code)
 
 	// Add expense
-	expenseReq := dtos.MedicalExpenseRequestDTO{
+	expenseReq := types.MedicalExpenseRequestDTO{
 		ProfileID:   profileID,
 		Description: "Test Expense",
 		Amount:      100.0,
@@ -1096,7 +1096,7 @@ func TestHealthFlow_RiskScoreTransitions_Success(t *testing.T) {
 	userID := uuid.New()
 
 	// Create healthy profile
-	profileReq := dtos.HealthProfileRequestDTO{
+	profileReq := types.HealthProfileRequestDTO{
 		UserID: userID,
 		Age:    25,
 		Gender: "male",
@@ -1111,7 +1111,7 @@ func TestHealthFlow_RiskScoreTransitions_Success(t *testing.T) {
 	router.ServeHTTP(w1, req1)
 
 	require.Equal(t, http.StatusCreated, w1.Code)
-	var profileResp dtos.HealthProfileResponseDTO
+	var profileResp types.HealthProfileResponseDTO
 	json.Unmarshal(w1.Body.Bytes(), &profileResp)
 	profileID := profileResp.ID
 
@@ -1127,7 +1127,7 @@ func TestHealthFlow_RiskScoreTransitions_Success(t *testing.T) {
 	assert.Less(t, initialScore, 0.3) // Should be low risk
 
 	// Add mild condition
-	conditionReq1 := dtos.MedicalConditionRequestDTO{
+	conditionReq1 := types.MedicalConditionRequestDTO{
 		ProfileID:   profileID,
 		Name:        "Seasonal Allergies",
 		Severity:    "mild",
@@ -1154,7 +1154,7 @@ func TestHealthFlow_RiskScoreTransitions_Success(t *testing.T) {
 	assert.Greater(t, mildScore, initialScore) // Should increase slightly
 
 	// Add severe condition
-	conditionReq2 := dtos.MedicalConditionRequestDTO{
+	conditionReq2 := types.MedicalConditionRequestDTO{
 		ProfileID:   profileID,
 		Name:        "Heart Disease",
 		Severity:    "severe",
@@ -1191,7 +1191,7 @@ func TestHealthFlow_FinancialVulnerability_Success(t *testing.T) {
 	userID := uuid.New()
 
 	// Create profile
-	profileReq := dtos.HealthProfileRequestDTO{
+	profileReq := types.HealthProfileRequestDTO{
 		UserID: userID,
 		Age:    40,
 		Gender: "female",
@@ -1206,12 +1206,12 @@ func TestHealthFlow_FinancialVulnerability_Success(t *testing.T) {
 	router.ServeHTTP(w1, req1)
 
 	require.Equal(t, http.StatusCreated, w1.Code)
-	var profileResp dtos.HealthProfileResponseDTO
+	var profileResp types.HealthProfileResponseDTO
 	json.Unmarshal(w1.Body.Bytes(), &profileResp)
 	profileID := profileResp.ID
 
 	// Add multiple high-cost expenses
-	expenses := []dtos.MedicalExpenseRequestDTO{
+	expenses := []types.MedicalExpenseRequestDTO{
 		{
 			ProfileID:   profileID,
 			Description: "Emergency surgery",
@@ -1256,7 +1256,7 @@ func TestHealthFlow_FinancialVulnerability_Success(t *testing.T) {
 	router.ServeHTTP(w2, req2)
 
 	require.Equal(t, http.StatusOK, w2.Code)
-	var summaryResp dtos.HealthSummaryResponseDTO
+	var summaryResp types.HealthSummaryResponseDTO
 	json.Unmarshal(w2.Body.Bytes(), &summaryResp)
 
 	// Verify high expense totals indicate financial vulnerability

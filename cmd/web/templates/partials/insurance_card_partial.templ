@@ -112,14 +112,14 @@ templ InsuranceCardPartial(policies []InsurancePolicyDTO) {
 							<!-- Monthly Premium -->
 							<div class="text-center">
 								<div class="text-2xl font-bold text-green-600 dark:text-green-400">
-									${ formatCurrency(policy.MonthlyPremium) }
+									${ formatInsuranceCurrency(policy.MonthlyPremium) }
 								</div>
 								<div class="text-xs text-gray-500 dark:text-gray-400">Monthly Premium</div>
 							</div>
 							<!-- Deductible -->
 							<div class="text-center">
 								<div class="text-2xl font-bold text-purple-600 dark:text-purple-400">
-									${ formatCurrency(policy.Deductible) }
+									${ formatInsuranceCurrency(policy.Deductible) }
 								</div>
 								<div class="text-xs text-gray-500 dark:text-gray-400">Deductible</div>
 							</div>
@@ -132,7 +132,7 @@ templ InsuranceCardPartial(policies []InsurancePolicyDTO) {
 									Deductible Progress
 								</span>
 								<span class="text-sm text-gray-500 dark:text-gray-400">
-									${ formatCurrency(policy.DeductibleUsed) } / ${ formatCurrency(policy.Deductible) }
+									${ formatInsuranceCurrency(policy.DeductibleUsed) } / ${ formatInsuranceCurrency(policy.Deductible) }
 								</span>
 							</div>
 							<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
@@ -149,7 +149,7 @@ templ InsuranceCardPartial(policies []InsurancePolicyDTO) {
 								<span class="font-medium">
 									{ policy.DeductiblePercentage }% met
 								</span>
-								<span>${ formatCurrency(policy.Deductible) }</span>
+								<span>${ formatInsuranceCurrency(policy.Deductible) }</span>
 							</div>
 						</div>
 
@@ -264,7 +264,7 @@ type InsurancePolicyDTO struct {
 	DaysUntilRenewal     int
 }
 
-func formatCurrency(amount float64) string {
+func formatInsuranceCurrency(amount float64) string {
 	return fmt.Sprintf("%.2f", amount)
 }
 

@@ -1,8 +1,9 @@
 package partials
 
 import (
-	"github.com/DuckDHD/BuyOrBye/internal/types"
 	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
+	"fmt"
+	"strings"
 )
 
 templ RecentDecisions(decisions []RecentDecisionDTO, hasMore bool) {
@@ -55,7 +56,7 @@ templ RecentDecisions(decisions []RecentDecisionDTO, hasMore bool) {
 }
 
 templ RecentDecisionCard(decision RecentDecisionDTO) {
-	<div class={ "bg-white dark:bg-gray-800 rounded-lg shadow-sm border-l-4 p-4 hover:shadow-md transition-shadow cursor-pointer " + getDecisionBorderColor(decision.Decision) }>
+	<div class={ "bg-white dark:bg-gray-800 rounded-lg shadow-sm border-l-4 p-4 hover:shadow-md transition-shadow cursor-pointer " + getRecentDecisionBorderColor(decision.Decision) }>
 		<div class="flex items-start justify-between">
 			<div class="flex-1 min-w-0">
 				<div class="flex items-center space-x-3">
@@ -70,7 +71,7 @@ templ RecentDecisionCard(decision RecentDecisionDTO) {
 						<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
 						</svg>
-						${ formatCurrency(decision.Cost) }
+						${ fmt.Sprintf("%.2f", decision.Cost) }
 					</div>
 					
 					if decision.Category != "" {
@@ -99,7 +100,7 @@ templ RecentDecisionCard(decision RecentDecisionDTO) {
 
 			<div class="flex-shrink-0 ml-4">
 				<div class="flex flex-col items-end space-y-2">
-					<span class={ "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium " + getDecisionBadgeClass(decision.Decision) }>
+					<span class={ "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium " + getRecentDecisionBadgeClass(decision.Decision) }>
 						{ decision.Decision }
 					</span>
 					
@@ -109,7 +110,7 @@ templ RecentDecisionCard(decision RecentDecisionDTO) {
 								<span class="mr-1">{ decision.Confidence }%</span>
 								<div class="w-8 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
 									<div 
-										class={ "h-full transition-all duration-500 " + getConfidenceBarColor(decision.Confidence) }
+										class={ "h-full transition-all duration-500 " + getRecentConfidenceBarColor(decision.Confidence) }
 										style={ "width: " + decision.Confidence + "%" }
 									></div>
 								</div>
@@ -124,17 +125,17 @@ templ RecentDecisionCard(decision RecentDecisionDTO) {
 		<div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 hidden group-hover:block">
 			<div class="flex items-center justify-between">
 				<div class="flex space-x-2">
-					<button 
-						type="button"
+					<a
+						href={ "/decisions/" + decision.ID }
+						target="_blank"
 						class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-						onclick={ "window.open('/decisions/" + decision.ID + "', '_blank')" }
 					>
 						<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
 						</svg>
 						View Details
-					</button>
+					</a>
 					
 					if decision.CanEdit {
 						<button 
@@ -196,7 +197,7 @@ type RecentDecisionDTO struct {
 	CanEdit    bool
 }
 
-func getDecisionBorderColor(decision string) string {
+func getRecentDecisionBorderColor(decision string) string {
 	switch decision {
 	case "BUY":
 		return "border-green-500 dark:border-green-400"
@@ -222,7 +223,7 @@ func getDecisionDotColor(decision string) string {
 	}
 }
 
-func getDecisionBadgeClass(decision string) string {
+func getRecentDecisionBadgeClass(decision string) string {
 	switch decision {
 	case "BUY":
 		return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
@@ -235,7 +236,7 @@ func getDecisionBadgeClass(decision string) string {
 	}
 }
 
-func getConfidenceBarColor(confidence string) string {
+func getRecentConfidenceBarColor(confidence string) string {
 	// Parse confidence to determine color
 	if confidence == "" {
 		return "bg-gray-400"

@@ -4,11 +4,10 @@ import (
 	"github.com/DuckDHD/BuyOrBye/internal/types"
 	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
 	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
-	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/partials"
 )
 
-templ HealthProfilePage(user *types.UserResponseDTO, csrfToken string) {
-	@layouts.App("Health Profile", csrfToken, user, "/health") {
+templ HealthProfilePage(dto types.HealthProfilePageDTO) {
+	@layouts.App("Health Profile", dto.Layout.CSRFToken, dto.Layout.User, "/health") {
 		<div class="space-y-8" x-data="healthProfile()">
 			<!-- Page Header -->
 			<div class="flex items-center justify-between">

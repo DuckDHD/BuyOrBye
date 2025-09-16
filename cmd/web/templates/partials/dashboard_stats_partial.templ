@@ -1,6 +1,8 @@
 package partials
 
-import "github.com/DuckDHD/BuyOrBye/internal/types"
+import "fmt"
+import "regexp"
+import "strings"
 
 templ DashboardStats(stats *DashboardStatsDTO) {
 	<div id="stats-container" class="space-y-6" x-data="statsData()">
@@ -31,7 +33,7 @@ templ DashboardStats(stats *DashboardStatsDTO) {
 		<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
 			@StatsCard("Total Decisions", stats.TotalDecisions, stats.DecisionsTrend, "decisions", "text-blue-600 dark:text-blue-400", "M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z")
 
-			@StatsCard("Money Saved", "$" + formatCurrency(stats.MoneySaved), stats.SavingsTrend, "savings", "text-green-600 dark:text-green-400", "M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z")
+			@StatsCard("Money Saved", "$" + formatDashboardCurrency(stats.MoneySaved), stats.SavingsTrend, "savings", "text-green-600 dark:text-green-400", "M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z")
 
 			@StatsCard("Avg Confidence", stats.AvgConfidence + "%", stats.ConfidenceTrend, "confidence", "text-purple-600 dark:text-purple-400", "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z")
 
@@ -85,7 +87,7 @@ templ DashboardStats(stats *DashboardStatsDTO) {
 						<div class="flex items-center justify-between">
 							<span class="text-sm text-gray-600 dark:text-gray-400">{ category.Name }</span>
 							<div class="text-right">
-								<div class="text-sm font-medium text-gray-900 dark:text-white">${ formatCurrency(category.Amount) }</div>
+								<div class="text-sm font-medium text-gray-900 dark:text-white">${ formatDashboardCurrency(category.Amount) }</div>
 								<div class="text-xs text-gray-500 dark:text-gray-400">{ category.Count } items</div>
 							</div>
 						</div>
@@ -242,8 +244,8 @@ type CategoryStats struct {
 	Count  int
 }
 
-func formatCurrency(amount float64) string {
-	return fmt.Sprintf("%.2f", amount)
+func formatDashboardCurrency(amount float64) string {
+	return fmt.Sprintf("$%.2f", amount)
 }
 
 func formatPercentage(percent float64) string {

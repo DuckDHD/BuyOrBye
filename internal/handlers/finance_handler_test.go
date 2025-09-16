@@ -16,10 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
-	"github.com/DuckDHD/BuyOrBye/internal/dtos"
+	"github.com/DuckDHD/BuyOrBye/internal/types"
 )
 
-// MockFinanceService is a mock implementation of FinanceService for testing
+// MockFinanceServiceInterface is a mock implementation of FinanceService for testing
 type MockFinanceServiceInterface struct {
 	mock.Mock
 }
@@ -147,6 +147,31 @@ func (m *MockFinanceServiceInterface) NormalizeToMonthly(amount float64, frequen
 	return args.Get(0).(float64), args.Error(1)
 }
 
+// Additional UI helper methods
+func (m *MockFinanceServiceInterface) GetFinanceSummary(userID string) (domain.FinanceSummary, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return domain.FinanceSummary{}, args.Error(1)
+	}
+	return args.Get(0).(domain.FinanceSummary), args.Error(1)
+}
+
+func (m *MockFinanceServiceInterface) GetIncomes(userID string) ([]domain.Income, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Income), args.Error(1)
+}
+
+func (m *MockFinanceServiceInterface) GetExpenseByID(userID string, expenseID uint) (domain.Expense, error) {
+	args := m.Called(userID, expenseID)
+	if args.Get(0) == nil {
+		return domain.Expense{}, args.Error(1)
+	}
+	return args.Get(0).(domain.Expense), args.Error(1)
+}
+
 func setupFinanceTestRouter(financeService FinanceServiceInterface) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -269,7 +294,7 @@ func TestFinanceHandler_AddIncome_Success(t *testing.T) {
 	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
-	addIncomeRequest := dtos.AddIncomeDTO{
+	addIncomeRequest := types.AddIncomeDTO{
 		Source:    "Software Engineer Salary",
 		Amount:    5000.00,
 		Frequency: "monthly",
@@ -308,7 +333,7 @@ func TestFinanceHandler_AddIncome_ValidationError(t *testing.T) {
 	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
-	addIncomeRequest := dtos.AddIncomeDTO{
+	addIncomeRequest := types.AddIncomeDTO{
 		Source:    "",        // Invalid - required field
 		Amount:    -100.00,   // Invalid - must be positive
 		Frequency: "invalid", // Invalid - not in allowed values
@@ -325,7 +350,7 @@ func TestFinanceHandler_AddIncome_ValidationError(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
-	var response dtos.ValidationErrorResponseDTO
+	var response types.ValidationErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -356,7 +381,7 @@ func TestFinanceHandler_GetIncomes_Success(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response []dtos.IncomeResponseDTO
+	var response []types.IncomeResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -373,7 +398,7 @@ func TestFinanceHandler_UpdateIncome_OnlyOwner(t *testing.T) {
 	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
-	updateIncomeRequest := dtos.UpdateIncomeDTO{
+	updateIncomeRequest := types.UpdateIncomeDTO{
 		Source: stringPtr("Senior Software Engineer"),
 		Amount: floatPtr(5500.00),
 	}
@@ -393,7 +418,7 @@ func TestFinanceHandler_UpdateIncome_OnlyOwner(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusNotFound, w.Code)
 
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -405,10 +430,10 @@ func TestFinanceHandler_UpdateIncome_OnlyOwner(t *testing.T) {
 
 func TestFinanceHandler_UpdateIncome_ForbiddenAccess(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
-	updateIncomeRequest := dtos.UpdateIncomeDTO{
+	updateIncomeRequest := types.UpdateIncomeDTO{
 		Source: stringPtr("Senior Software Engineer"),
 		Amount: floatPtr(5500.00),
 	}
@@ -432,7 +457,7 @@ func TestFinanceHandler_UpdateIncome_ForbiddenAccess(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusNotFound, w.Code) // Should return not found for security
 
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -473,7 +498,7 @@ func TestFinanceHandler_AddExpense_RequiresAuth(t *testing.T) {
 	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupUnauthenticatedTestRouter(mockFinanceService) // No auth middleware
 
-	addExpenseRequest := dtos.AddExpenseDTO{
+	addExpenseRequest := types.AddExpenseDTO{
 		Category:  "housing",
 		Name:      "Monthly Rent",
 		Amount:    1200.00,
@@ -493,7 +518,7 @@ func TestFinanceHandler_AddExpense_RequiresAuth(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -509,7 +534,7 @@ func TestFinanceHandler_AddExpense_Success(t *testing.T) {
 	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
-	addExpenseRequest := dtos.AddExpenseDTO{
+	addExpenseRequest := types.AddExpenseDTO{
 		Category:  "housing",
 		Name:      "Monthly Rent",
 		Amount:    1200.00,
@@ -563,7 +588,7 @@ func TestFinanceHandler_GetExpenses_Success(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response []dtos.ExpenseResponseDTO
+	var response []types.ExpenseResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -593,7 +618,7 @@ func TestFinanceHandler_GetExpenses_WithCategoryFilter(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response []dtos.ExpenseResponseDTO
+	var response []types.ExpenseResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -610,7 +635,7 @@ func TestFinanceHandler_AddLoan_Success(t *testing.T) {
 	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
-	addLoanRequest := dtos.AddLoanDTO{
+	addLoanRequest := types.AddLoanDTO{
 		Lender:           "Chase Bank",
 		Type:             "mortgage",
 		PrincipalAmount:  250000.00,
@@ -649,10 +674,10 @@ func TestFinanceHandler_AddLoan_Success(t *testing.T) {
 
 func TestFinanceHandler_AddLoan_ValidationError(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
-	addLoanRequest := dtos.AddLoanDTO{
+	addLoanRequest := types.AddLoanDTO{
 		Lender:           "",             // Required field
 		Type:             "invalid-type", // Must be from allowed values
 		PrincipalAmount:  -1000.00,       // Must be positive
@@ -673,7 +698,7 @@ func TestFinanceHandler_AddLoan_ValidationError(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
-	var response dtos.ValidationErrorResponseDTO
+	var response types.ValidationErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -687,7 +712,7 @@ func TestFinanceHandler_AddLoan_ValidationError(t *testing.T) {
 
 func TestFinanceHandler_GetFinanceSummary_Success(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	expectedSummary := createTestFinanceSummary()
@@ -703,7 +728,7 @@ func TestFinanceHandler_GetFinanceSummary_Success(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response dtos.FinanceSummaryResponseDTO
+	var response types.FinanceSummaryResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -717,7 +742,7 @@ func TestFinanceHandler_GetFinanceSummary_Success(t *testing.T) {
 
 func TestFinanceHandler_GetAffordability_Success(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	expectedAffordability := 1500.00
@@ -745,7 +770,7 @@ func TestFinanceHandler_GetAffordability_Success(t *testing.T) {
 
 func TestFinanceHandler_GetAffordability_ServiceError(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	mockFinanceService.On("GetMaxAffordableAmount", mock.Anything, "test-user-123").
@@ -759,7 +784,7 @@ func TestFinanceHandler_GetAffordability_ServiceError(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -773,7 +798,7 @@ func TestFinanceHandler_GetAffordability_ServiceError(t *testing.T) {
 
 func TestFinanceHandler_AddIncome_MalformedJSON_Returns400(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	// Act
@@ -785,7 +810,7 @@ func TestFinanceHandler_AddIncome_MalformedJSON_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -797,7 +822,7 @@ func TestFinanceHandler_AddIncome_MalformedJSON_Returns400(t *testing.T) {
 
 func TestFinanceHandler_AddExpense_MalformedJSON_Returns400(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	// Act
@@ -809,7 +834,7 @@ func TestFinanceHandler_AddExpense_MalformedJSON_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -823,10 +848,10 @@ func TestFinanceHandler_AddExpense_MalformedJSON_Returns400(t *testing.T) {
 
 func TestFinanceHandler_UpdateIncome_NotFound(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
-	updateIncomeRequest := dtos.UpdateIncomeDTO{
+	updateIncomeRequest := types.UpdateIncomeDTO{
 		Source: stringPtr("Updated Source"),
 		Amount: floatPtr(6000.00),
 	}
@@ -846,7 +871,7 @@ func TestFinanceHandler_UpdateIncome_NotFound(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusNotFound, w.Code)
 
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -858,7 +883,7 @@ func TestFinanceHandler_UpdateIncome_NotFound(t *testing.T) {
 
 func TestFinanceHandler_DeleteIncome_NotFound(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
 	mockFinanceService.On("DeleteIncome", mock.Anything, "test-user-123", "nonexistent").
@@ -872,7 +897,7 @@ func TestFinanceHandler_DeleteIncome_NotFound(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusNotFound, w.Code)
 
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -886,10 +911,10 @@ func TestFinanceHandler_DeleteIncome_NotFound(t *testing.T) {
 
 func TestFinanceHandler_AddIncome_ServiceError_Returns500(t *testing.T) {
 	// Arrange
-	mockFinanceService := new(MockFinanceService)
+	mockFinanceService := new(MockFinanceServiceInterface)
 	router := setupFinanceTestRouter(mockFinanceService)
 
-	addIncomeRequest := dtos.AddIncomeDTO{
+	addIncomeRequest := types.AddIncomeDTO{
 		Source:    "Test Income",
 		Amount:    1000.00,
 		Frequency: "monthly",
@@ -909,7 +934,7 @@ func TestFinanceHandler_AddIncome_ServiceError_Returns500(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 

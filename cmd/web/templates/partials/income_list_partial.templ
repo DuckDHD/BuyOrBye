@@ -90,7 +90,7 @@ templ IncomeListPartial(incomes []IncomeItemDTO, total float64) {
 								<td class="px-6 py-4 whitespace-nowrap">
 									<div x-show="!editing">
 										<div class="text-sm font-medium text-gray-900 dark:text-white">
-											${ formatCurrency(income.Amount) }
+											${ formatIncomeCurrency(income.Amount) }
 										</div>
 									</div>
 									<div x-show="editing">
@@ -123,7 +123,7 @@ templ IncomeListPartial(incomes []IncomeItemDTO, total float64) {
 								</td>
 								<td class="px-6 py-4 whitespace-nowrap">
 									<div class="text-sm text-gray-900 dark:text-white font-medium">
-										${ formatCurrency(income.MonthlyAmount) }
+										${ formatIncomeCurrency(income.MonthlyAmount) }
 									</div>
 								</td>
 								<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -181,7 +181,7 @@ templ IncomeListPartial(incomes []IncomeItemDTO, total float64) {
 						Total Monthly Income
 					</div>
 					<div class="text-lg font-bold text-green-600 dark:text-green-400">
-						${ formatCurrency(total) }
+						${ formatIncomeCurrency(total) }
 					</div>
 				</div>
 			</div>
@@ -273,8 +273,8 @@ type IncomeItemDTO struct {
 	UpdatedAt     string
 }
 
-func formatCurrency(amount float64) string {
-	return fmt.Sprintf("%.2f", amount)
+func formatIncomeCurrency(amount float64) string {
+	return fmt.Sprintf("$%.2f", amount)
 }
 
 func getIncomeTypeColor(incomeType string) string {

@@ -1,11 +1,8 @@
 package partials
 
-import (
-	"fmt"
-	"github.com/a-h/templ"
-)
+import "github.com/DuckDHD/BuyOrBye/internal/types"
 
-templ ExpenseFormPartial(categories []string, expense *ExpenseFormDTO) {
+templ ExpenseFormPartial(categories []string, expense *types.ExpenseFormDTO) {
 	<div class="p-6" x-data="expenseForm()" x-init="initForm()">
 		<form 
 			hx-post="/finance/expense"
@@ -402,13 +399,4 @@ templ ExpenseFormPartial(categories []string, expense *ExpenseFormDTO) {
 			}
 		}
 	</script>
-}
-
-type ExpenseFormDTO struct {
-	ID          string
-	Name        string
-	Category    string
-	Amount      float64
-	Frequency   string
-	Description string
 }

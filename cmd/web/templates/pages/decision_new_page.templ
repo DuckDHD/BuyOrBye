@@ -3,12 +3,10 @@ package pages
 import (
 	"github.com/DuckDHD/BuyOrBye/internal/types"
 	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
-	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
-	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/partials"
 )
 
-templ DecisionNewPage(user *types.UserResponseDTO, csrfToken string, categories []string) {
-	@layouts.App("New Decision", csrfToken, user, "/decisions/new") {
+templ DecisionNewPage(dto types.DecisionNewPageDTO) {
+	@layouts.App("New Decision", dto.Layout.CSRFToken, dto.Layout.User, "/decisions/new") {
 		<div class="max-w-2xl mx-auto" x-data="decisionWizard()">
 			<!-- Progress Indicator -->
 			<div class="mb-8">
@@ -61,7 +59,7 @@ templ DecisionNewPage(user *types.UserResponseDTO, csrfToken string, categories 
 					hx-indicator="#processing-indicator"
 					@submit="handleSubmit"
 				>
-					<input type="hidden" name="csrf_token" value={ csrfToken }/>
+					<input type="hidden" name="csrf_token" value={ dto.Layout.CSRFToken }/>
 					
 					<!-- Step 1: Purchase Details -->
 					<div x-show="currentStep === 1" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
@@ -129,7 +127,7 @@ templ DecisionNewPage(user *types.UserResponseDTO, csrfToken string, categories 
 										x-model="formData.category"
 									>
 										<option value="">Select a category</option>
-										for _, category := range categories {
+										for _, category := range dto.Categories {
 											<option value={ category }>{ category }</option>
 										}
 									</select>

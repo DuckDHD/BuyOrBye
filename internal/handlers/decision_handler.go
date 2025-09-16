@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,18 +11,26 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 
-	"github.com/DuckDHD/BuyOrBye/internal/domain"
 	"github.com/DuckDHD/BuyOrBye/internal/types"
 )
 
+// DecisionService interface for decision operations using DTOs
+type DecisionService interface {
+	// MakeDecision processes a purchase intent and returns a decision outcome
+	MakeDecision(ctx context.Context, intent types.PurchaseIntentDTO) (*types.DecisionResponseDTO, error)
+
+	// GetDecisionHistory retrieves past decisions for a user within the specified number of days
+	GetDecisionHistory(ctx context.Context, userID string, days int) (*types.DecisionHistoryDTO, error)
+}
+
 // DecisionHandler handles HTTP requests for purchase decision operations
 type DecisionHandler struct {
-	service   DecisionServiceInterface
+	service   DecisionService
 	validator *validator.Validate
 }
 
 // NewDecisionHandler creates a new DecisionHandler
-func NewDecisionHandler(service DecisionServiceInterface) *DecisionHandler {
+func NewDecisionHandler(service DecisionService) *DecisionHandler {
 	return &DecisionHandler{
 		service:   service,
 		validator: validator.New(),
@@ -58,33 +67,15 @@ func (h *DecisionHandler) MakeDecision(c *gin.Context) {
 		return
 	}
 
-	// Convert DTO to domain object and validate
-	domainIntent, err := intentDTO.ToDomain()
-	if err != nil {
-		// Extract validation details
-		var validationDetails interface{}
-		if validationErr, ok := err.(*validator.ValidationErrors); ok {
-			validationDetails = h.formatValidationErrors(*validationErr)
-		} else {
-			validationDetails = err.Error()
-		}
-		h.respondWithError(c, http.StatusBadRequest, "validation_error", "Request validation failed", validationDetails)
-		return
-	}
-
-	// Set user ID in domain intent
-	domainIntent.UserID = userIDStr
+	// Set user ID in intent DTO
+	intentDTO.UserID = userIDStr
 
 	// Call service to make decision
-	decision, err := h.service.MakeDecision(c.Request.Context(), *domainIntent)
+	responseDTO, err := h.service.MakeDecision(c.Request.Context(), intentDTO)
 	if err != nil {
 		h.respondWithError(c, http.StatusInternalServerError, "service_failure", "Unable to process decision request", nil)
 		return
 	}
-
-	// Convert domain decision to response DTO
-	var responseDTO types.DecisionResponseDTO
-	responseDTO.FromDomain(*decision)
 
 	c.JSON(http.StatusOK, responseDTO)
 }
@@ -126,34 +117,29 @@ func (h *DecisionHandler) GetDecisionHistory(c *gin.Context) {
 	}
 
 	// Get decision history from service
-	allDecisions, err := h.service.GetDecisionHistory(c.Request.Context(), userIDStr, days)
+	historyDTO, err := h.service.GetDecisionHistory(c.Request.Context(), userIDStr, days)
 	if err != nil {
 		h.respondWithError(c, http.StatusInternalServerError, "service_failure", "Unable to retrieve decision history", nil)
 		return
 	}
 
-	// Store total count before pagination
-	totalDecisions := len(allDecisions)
-
 	// Apply pagination to results
-	var paginatedDecisions []domain.PastDecision
-	start := offset
-	end := offset + limit
-	if start >= len(allDecisions) {
-		paginatedDecisions = []domain.PastDecision{} // Empty slice if offset beyond results
-	} else {
-		if end > len(allDecisions) {
-			end = len(allDecisions)
-		}
-		paginatedDecisions = allDecisions[start:end]
-	}
+	if historyDTO != nil && len(historyDTO.RecentDecisions) > 0 {
+		totalDecisions := len(historyDTO.RecentDecisions)
+		start := offset
+		end := offset + limit
 
-	// Convert to response DTO
-	var historyDTO types.DecisionHistoryDTO
-	historyDTO.FromDomainHistory(userIDStr, paginatedDecisions, fmt.Sprintf("last_%d_days", days))
-	
-	// Override total with original count (before pagination)
-	historyDTO.TotalDecisions = totalDecisions
+		if start >= totalDecisions {
+			historyDTO.RecentDecisions = []types.DecisionSummaryDTO{} // Empty slice if offset beyond results
+		} else {
+			if end > totalDecisions {
+				end = totalDecisions
+			}
+			historyDTO.RecentDecisions = historyDTO.RecentDecisions[start:end]
+		}
+		// Keep original total for pagination info
+		historyDTO.TotalDecisions = totalDecisions
+	}
 
 	c.JSON(http.StatusOK, historyDTO)
 }
@@ -183,20 +169,24 @@ func (h *DecisionHandler) GetDecisionStats(c *gin.Context) {
 	}
 
 	// Get decision history from service
-	decisions, err := h.service.GetDecisionHistory(c.Request.Context(), userIDStr, days)
+	historyDTO, err := h.service.GetDecisionHistory(c.Request.Context(), userIDStr, days)
 	if err != nil {
 		h.respondWithError(c, http.StatusInternalServerError, "service_failure", "Unable to retrieve decision statistics", nil)
 		return
 	}
 
 	// Calculate statistics
+	var decisions []types.DecisionSummaryDTO
+	if historyDTO != nil {
+		decisions = historyDTO.RecentDecisions
+	}
 	stats := h.calculateDecisionStats(userIDStr, decisions, days)
 
 	c.JSON(http.StatusOK, stats)
 }
 
 // calculateDecisionStats processes decision history to generate statistics
-func (h *DecisionHandler) calculateDecisionStats(userID string, decisions []domain.PastDecision, days int) map[string]interface{} {
+func (h *DecisionHandler) calculateDecisionStats(userID string, decisions []types.DecisionSummaryDTO, days int) map[string]interface{} {
 	totalDecisions := len(decisions)
 	totalSpending := 0.0
 	decisionPattern := map[string]int{"BUY": 0, "WAIT": 0, "BYE": 0}

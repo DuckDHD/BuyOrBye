@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/DuckDHD/BuyOrBye/internal/dtos"
 	"github.com/DuckDHD/BuyOrBye/internal/types"
 )
 
@@ -115,7 +114,7 @@ func NewTestUser(email, name, password string) *TestUser {
 
 // Register registers the test user and stores the access token
 func (u *TestUser) Register(t *testing.T, client *HTTPClient) {
-	reqBody := dtos.RegisterRequestDTO{
+	reqBody := types.RegisterRequestDTO{
 		Email:    u.Email,
 		Name:     u.Name,
 		Password: u.Password,
@@ -124,7 +123,7 @@ func (u *TestUser) Register(t *testing.T, client *HTTPClient) {
 	resp, body := client.POST(t, "/api/v1/auth/register", reqBody)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, "Registration failed: %s", string(body))
 	
-	var tokenResponse dtos.TokenResponseDTO
+	var tokenResponse types.TokenResponseDTO
 	err := json.Unmarshal(body, &tokenResponse)
 	require.NoError(t, err, "Failed to unmarshal token response")
 	
@@ -134,7 +133,7 @@ func (u *TestUser) Register(t *testing.T, client *HTTPClient) {
 
 // Login authenticates the test user and stores the access token
 func (u *TestUser) Login(t *testing.T, client *HTTPClient) {
-	reqBody := dtos.LoginRequestDTO{
+	reqBody := types.LoginRequestDTO{
 		Email:    u.Email,
 		Password: u.Password,
 	}
@@ -142,7 +141,7 @@ func (u *TestUser) Login(t *testing.T, client *HTTPClient) {
 	resp, body := client.POST(t, "/api/v1/auth/login", reqBody)
 	require.Equal(t, http.StatusOK, resp.StatusCode, "Login failed: %s", string(body))
 	
-	var tokenResponse dtos.TokenResponseDTO
+	var tokenResponse types.TokenResponseDTO
 	err := json.Unmarshal(body, &tokenResponse)
 	require.NoError(t, err, "Failed to unmarshal token response")
 	
@@ -152,9 +151,9 @@ func (u *TestUser) Login(t *testing.T, client *HTTPClient) {
 
 // FinanceTestData represents test data for financial scenarios
 type FinanceTestData struct {
-	Incomes  []dtos.AddIncomeDTO
-	Expenses []dtos.AddExpenseDTO
-	Loans    []dtos.AddLoanDTO
+	Incomes  []types.AddIncomeDTO
+	Expenses []types.AddExpenseDTO
+	Loans    []types.AddLoanDTO
 }
 
 // HealthTestData represents test data for health scenarios
@@ -167,7 +166,7 @@ type HealthTestData struct {
 // NewBasicFinanceData creates basic financial data for testing
 func NewBasicFinanceData() *FinanceTestData {
 	return &FinanceTestData{
-		Incomes: []dtos.AddIncomeDTO{
+		Incomes: []types.AddIncomeDTO{
 			{
 				Source:    "Software Engineer Salary",
 				Amount:    8000.00,
@@ -179,7 +178,7 @@ func NewBasicFinanceData() *FinanceTestData {
 				Frequency: "monthly",
 			},
 		},
-		Expenses: []dtos.AddExpenseDTO{
+		Expenses: []types.AddExpenseDTO{
 			{
 				Category:  "housing",
 				Name:      "Monthly Rent",
@@ -213,7 +212,7 @@ func NewBasicFinanceData() *FinanceTestData {
 				Priority:  3,
 			},
 		},
-		Loans: []dtos.AddLoanDTO{
+		Loans: []types.AddLoanDTO{
 			{
 				Lender:           "Chase Bank",
 				Type:             "mortgage",
@@ -230,7 +229,7 @@ func NewBasicFinanceData() *FinanceTestData {
 // NewExcellentFinanceData creates data for excellent financial health
 func NewExcellentFinanceData() *FinanceTestData {
 	return &FinanceTestData{
-		Incomes: []dtos.AddIncomeDTO{
+		Incomes: []types.AddIncomeDTO{
 			{
 				Source:    "Senior Software Engineer",
 				Amount:    12000.00,
@@ -242,7 +241,7 @@ func NewExcellentFinanceData() *FinanceTestData {
 				Frequency: "monthly",
 			},
 		},
-		Expenses: []dtos.AddExpenseDTO{
+		Expenses: []types.AddExpenseDTO{
 			{
 				Category:  "housing",
 				Name:      "Mortgage",
@@ -268,7 +267,7 @@ func NewExcellentFinanceData() *FinanceTestData {
 				Priority:  2,
 			},
 		},
-		Loans: []dtos.AddLoanDTO{
+		Loans: []types.AddLoanDTO{
 			{
 				Lender:           "Bank of America",
 				Type:             "mortgage",
@@ -285,14 +284,14 @@ func NewExcellentFinanceData() *FinanceTestData {
 // NewPoorFinanceData creates data for poor financial health
 func NewPoorFinanceData() *FinanceTestData {
 	return &FinanceTestData{
-		Incomes: []dtos.AddIncomeDTO{
+		Incomes: []types.AddIncomeDTO{
 			{
 				Source:    "Part-time Job",
 				Amount:    2800.00,
 				Frequency: "monthly",
 			},
 		},
-		Expenses: []dtos.AddExpenseDTO{
+		Expenses: []types.AddExpenseDTO{
 			{
 				Category:  "housing",
 				Name:      "Rent",
@@ -326,7 +325,7 @@ func NewPoorFinanceData() *FinanceTestData {
 				Priority:  2,
 			},
 		},
-		Loans: []dtos.AddLoanDTO{
+		Loans: []types.AddLoanDTO{
 			{
 				Lender:           "Credit Union",
 				Type:             "personal",
@@ -371,11 +370,11 @@ func (fd *FinanceTestData) AddFinanceData(t *testing.T, client *HTTPClient) {
 }
 
 // GetFinanceSummary retrieves the financial summary for the user
-func (c *HTTPClient) GetFinanceSummary(t *testing.T) *dtos.FinanceSummaryResponseDTO {
+func (c *HTTPClient) GetFinanceSummary(t *testing.T) *types.FinanceSummaryResponseDTO {
 	resp, body := c.GET(t, "/api/v1/finance/summary")
 	require.Equal(t, http.StatusOK, resp.StatusCode, "Failed to get finance summary: %s", string(body))
 	
-	var summary dtos.FinanceSummaryResponseDTO
+	var summary types.FinanceSummaryResponseDTO
 	err := json.Unmarshal(body, &summary)
 	require.NoError(t, err, "Failed to unmarshal finance summary")
 	
@@ -401,7 +400,7 @@ func (c *HTTPClient) GetAffordability(t *testing.T) float64 {
 func AssertValidationError(t *testing.T, resp *http.Response, body []byte, expectedField string) {
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error")
 	
-	var errorResponse dtos.ValidationErrorResponseDTO
+	var errorResponse types.ValidationErrorResponseDTO
 	err := json.Unmarshal(body, &errorResponse)
 	require.NoError(t, err, "Failed to unmarshal validation error response")
 	
@@ -413,7 +412,7 @@ func AssertValidationError(t *testing.T, resp *http.Response, body []byte, expec
 func AssertErrorResponse(t *testing.T, expectedStatus int, expectedError string, resp *http.Response, body []byte) {
 	require.Equal(t, expectedStatus, resp.StatusCode, "Unexpected status code")
 	
-	var errorResponse dtos.ErrorResponseDTO
+	var errorResponse types.ErrorResponseDTO
 	err := json.Unmarshal(body, &errorResponse)
 	require.NoError(t, err, "Failed to unmarshal error response")
 	

@@ -8,6 +8,118 @@ import (
 	"github.com/DuckDHD/BuyOrBye/internal/models"
 )
 
+func ensureIndex(db *gorm.DB, table, indexName, columns string) error {
+	var cnt int64
+	if err := db.Raw(`
+		SELECT COUNT(*)
+		FROM information_schema.statistics
+		WHERE table_schema = DATABASE()
+		  AND table_name = ?
+		  AND index_name = ?`,
+		table, indexName,
+	).Scan(&cnt).Error; err != nil {
+		return err
+	}
+	if cnt > 0 {
+		return nil
+	}
+	stmt := fmt.Sprintf("ALTER TABLE %s ADD INDEX %s (%s)", table, indexName, columns)
+	return db.Exec(stmt).Error
+}
+
+func ensureUniqueConstraint(db *gorm.DB, table, constraintName, columns string) error {
+	// Check by constraint name
+	var cnt int64
+	if err := db.Raw(`
+		SELECT COUNT(*)
+		FROM information_schema.table_constraints
+		WHERE table_schema = DATABASE()
+		  AND table_name = ?
+		  AND constraint_name = ?
+		  AND constraint_type = 'UNIQUE'`,
+		table, constraintName,
+	).Scan(&cnt).Error; err != nil {
+		return err
+	}
+	if cnt > 0 {
+		return nil
+	}
+	// Add via unique index (portable); MySQL maps it to a unique constraint
+	stmt := fmt.Sprintf("ALTER TABLE %s ADD UNIQUE %s (%s)", table, constraintName, columns)
+	return db.Exec(stmt).Error
+}
+
+func ensureCheckConstraint(db *gorm.DB, table, constraintName, checkExpr string) error {
+	// Many MySQL/MariaDB versions ignore or don’t support CHECK; try and ignore if not supported.
+	var cnt int64
+	if err := db.Raw(`
+		SELECT COUNT(*)
+		FROM information_schema.table_constraints
+		WHERE table_schema = DATABASE()
+		  AND table_name = ?
+		  AND constraint_name = ?
+		  AND constraint_type = 'CHECK'`,
+		table, constraintName,
+	).Scan(&cnt).Error; err != nil {
+		return err
+	}
+	if cnt > 0 {
+		return nil
+	}
+	stmt := fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s CHECK (%s)", table, constraintName, checkExpr)
+	if err := db.Exec(stmt).Error; err != nil {
+		// Gracefully ignore unsupported CHECK constraint errors
+		return nil
+	}
+	return nil
+}
+
+// ensure a column exists; if not, add it with the provided definition
+func ensureColumn(db *gorm.DB, table, column, typeDef string) error {
+	var cnt int64
+	if err := db.Raw(`
+		SELECT COUNT(*) FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+		table, column,
+	).Scan(&cnt).Error; err != nil {
+		return err
+	}
+	if cnt > 0 {
+		return nil
+	}
+	stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, typeDef)
+	return db.Exec(stmt).Error
+}
+
+// rename a column if the desired column is missing but a legacy column exists
+func renameColumnIfLegacy(db *gorm.DB, table, legacyCol, newCol, typeDef string) error {
+	var hasNew, hasLegacy int64
+	if err := db.Raw(`
+		SELECT COUNT(*) FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+		table, newCol,
+	).Scan(&hasNew).Error; err != nil {
+		return err
+	}
+	if hasNew > 0 {
+		return nil
+	}
+	if err := db.Raw(`
+		SELECT COUNT(*) FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+		table, legacyCol,
+	).Scan(&hasLegacy).Error; err != nil {
+		return err
+	}
+	if hasLegacy == 0 {
+		// nothing to rename
+		return nil
+	}
+	// CHANGE COLUMN legacy -> new (portable; defines type too)
+	stmt := fmt.Sprintf("ALTER TABLE %s CHANGE COLUMN %s %s %s", table, legacyCol, newCol, typeDef)
+	return db.Exec(stmt).Error
+}
+
 // RunAllMigrations runs all database migrations in the correct order
 func RunAllMigrations(db *gorm.DB) error {
 	// Run core system migrations first
@@ -92,50 +204,59 @@ func RunDecisionMigrations(db *gorm.DB) error {
 
 // createDecisionIndexes creates composite indexes for decision queries
 func createDecisionIndexes(db *gorm.DB) error {
-	decisionIndexes := []struct {
-		name  string
-		query string
-	}{
-		// Decision records - user-focused queries
-		{
-			name:  "idx_decisions_user_date",
-			query: "CREATE INDEX IF NOT EXISTS idx_decisions_user_date ON decision_records(user_id, created_at DESC)",
-		},
-		{
-			name:  "idx_decisions_user_category_decision",
-			query: "CREATE INDEX IF NOT EXISTS idx_decisions_user_category_decision ON decision_records(user_id, category, decision)",
-		},
-		{
-			name:  "idx_decisions_user_recent",
-			query: "CREATE INDEX IF NOT EXISTS idx_decisions_user_recent ON decision_records(user_id, decision, created_at DESC)",
-		},
-		{
-			name:  "idx_decisions_category_outcome",
-			query: "CREATE INDEX IF NOT EXISTS idx_decisions_category_outcome ON decision_records(category, decision, confidence)",
-		},
-		// AI prompt logs - debugging and analytics
-		{
-			name:  "idx_ai_logs_user_date",
-			query: "CREATE INDEX IF NOT EXISTS idx_ai_logs_user_date ON ai_prompt_logs(user_id, created_at DESC)",
-		},
-		{
-			name:  "idx_ai_logs_provider_success",
-			query: "CREATE INDEX IF NOT EXISTS idx_ai_logs_provider_success ON ai_prompt_logs(ai_provider, success, created_at DESC)",
-		},
-		{
-			name:  "idx_ai_logs_performance",
-			query: "CREATE INDEX IF NOT EXISTS idx_ai_logs_performance ON ai_prompt_logs(success, response_time_ms, tokens_total)",
-		},
-		{
-			name:  "idx_ai_logs_request_tracking",
-			query: "CREATE INDEX IF NOT EXISTS idx_ai_logs_request_tracking ON ai_prompt_logs(request_id, intent_id, created_at)",
-		},
+	// --- Align ai_prompt_logs columns before indexing ---
+
+	// Legacy rename: provider -> ai_provider
+	if err := renameColumnIfLegacy(db, "ai_prompt_logs", "provider", "ai_provider", "varchar(50) NOT NULL DEFAULT 'openai'"); err != nil {
+		return fmt.Errorf("failed to rename provider->ai_provider: %w", err)
 	}
 
-	for _, idx := range decisionIndexes {
-		if err := db.Exec(idx.query).Error; err != nil {
-			return fmt.Errorf("failed to create decision index %s: %w", idx.name, err)
+	// Columns used by any ai_prompt_logs indexes
+	toEnsure := []struct {
+		col string
+		def string
+	}{
+		{"ai_provider", "varchar(50) NOT NULL DEFAULT 'openai'"},
+		{"success", "TINYINT(1) NOT NULL DEFAULT 0"},
+		{"created_at", "DATETIME(3) NULL"},
+		{"response_time_ms", "BIGINT NOT NULL DEFAULT 0"},
+		{"tokens_total", "INT NOT NULL DEFAULT 0"},
+		{"request_id", "varchar(255) NOT NULL DEFAULT ''"},
+		{"intent_id", "varchar(255) NULL"},
+	}
+
+	for _, c := range toEnsure {
+		if err := ensureColumn(db, "ai_prompt_logs", c.col, c.def); err != nil {
+			return fmt.Errorf("ensure ai_prompt_logs.%s: %w", c.col, err)
 		}
+	}
+
+	// --- decision_records indexes ---
+	if err := ensureIndex(db, "decision_records", "idx_decisions_user_date", "user_id, created_at"); err != nil {
+		return fmt.Errorf("failed to create decision index idx_decisions_user_date: %w", err)
+	}
+	if err := ensureIndex(db, "decision_records", "idx_decisions_user_category_decision", "user_id, category, decision"); err != nil {
+		return fmt.Errorf("failed to create decision index idx_decisions_user_category_decision: %w", err)
+	}
+	if err := ensureIndex(db, "decision_records", "idx_decisions_user_recent", "user_id, decision, created_at"); err != nil {
+		return fmt.Errorf("failed to create decision index idx_decisions_user_recent: %w", err)
+	}
+	if err := ensureIndex(db, "decision_records", "idx_decisions_category_outcome", "category, decision, confidence"); err != nil {
+		return fmt.Errorf("failed to create decision index idx_decisions_category_outcome: %w", err)
+	}
+
+	// --- ai_prompt_logs indexes ---
+	if err := ensureIndex(db, "ai_prompt_logs", "idx_ai_logs_user_date", "user_id, created_at"); err != nil {
+		return fmt.Errorf("failed to create ai index idx_ai_logs_user_date: %w", err)
+	}
+	if err := ensureIndex(db, "ai_prompt_logs", "idx_ai_logs_provider_success", "ai_provider, success, created_at"); err != nil {
+		return fmt.Errorf("failed to create ai index idx_ai_logs_provider_success: %w", err)
+	}
+	if err := ensureIndex(db, "ai_prompt_logs", "idx_ai_logs_performance", "success, response_time_ms, tokens_total"); err != nil {
+		return fmt.Errorf("failed to create ai index idx_ai_logs_performance: %w", err)
+	}
+	if err := ensureIndex(db, "ai_prompt_logs", "idx_ai_logs_request_tracking", "request_id, intent_id, created_at"); err != nil {
+		return fmt.Errorf("failed to create ai index idx_ai_logs_request_tracking: %w", err)
 	}
 
 	return nil
@@ -143,55 +264,34 @@ func createDecisionIndexes(db *gorm.DB) error {
 
 // createCompositeIndexes creates composite indexes for better query performance
 func createCompositeIndexes(db *gorm.DB) error {
-	// Health-related composite indexes
-	indexes := []struct {
-		name  string
-		query string
-	}{
-		// Medical expenses indexes for common queries
-		{
-			name:  "idx_expenses_user_date",
-			query: "CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON medical_expenses(user_id, date DESC)",
-		},
-		{
-			name:  "idx_conditions_profile_severity",
-			query: "CREATE INDEX IF NOT EXISTS idx_conditions_profile_severity ON medical_conditions(profile_id, severity, is_active)",
-		},
-		// Insurance policies for coverage lookups
-		{
-			name:  "idx_policies_user_active_type",
-			query: "CREATE INDEX IF NOT EXISTS idx_policies_user_active_type ON insurance_policies(user_id, is_active, type)",
-		},
-		// Health profiles for user lookups
-		{
-			name:  "idx_health_profiles_user",
-			query: "CREATE INDEX IF NOT EXISTS idx_health_profiles_user ON health_profiles(user_id, created_at)",
-		},
-		// Financial data indexes for affordability calculations
-		{
-			name:  "idx_expenses_user_category_date",
-			query: "CREATE INDEX IF NOT EXISTS idx_expenses_user_category_date ON expenses(user_id, category, date DESC)",
-		},
-		{
-			name:  "idx_incomes_user_active_date",
-			query: "CREATE INDEX IF NOT EXISTS idx_incomes_user_active_date ON incomes(user_id, is_active, date DESC)",
-		},
-		// Medical expenses coverage analysis
-		{
-			name:  "idx_medical_expenses_coverage",
-			query: "CREATE INDEX IF NOT EXISTS idx_medical_expenses_coverage ON medical_expenses(user_id, is_covered, insurance_payment)",
-		},
-		// Recurring expenses tracking
-		{
-			name:  "idx_medical_expenses_recurring",
-			query: "CREATE INDEX IF NOT EXISTS idx_medical_expenses_recurring ON medical_expenses(user_id, is_recurring, frequency)",
-		},
+	// Health domain
+	if err := ensureIndex(db, "medical_expenses", "idx_expenses_user_date", "user_id, date"); err != nil {
+		return fmt.Errorf("failed idx_expenses_user_date: %w", err)
+	}
+	if err := ensureIndex(db, "medical_conditions", "idx_conditions_profile_severity", "profile_id, severity, is_active"); err != nil {
+		return fmt.Errorf("failed idx_conditions_profile_severity: %w", err)
+	}
+	if err := ensureIndex(db, "insurance_policies", "idx_policies_user_active_type", "user_id, is_active, type"); err != nil {
+		return fmt.Errorf("failed idx_policies_user_active_type: %w", err)
+	}
+	if err := ensureIndex(db, "health_profiles", "idx_health_profiles_user", "user_id, created_at"); err != nil {
+		return fmt.Errorf("failed idx_health_profiles_user: %w", err)
 	}
 
-	for _, idx := range indexes {
-		if err := db.Exec(idx.query).Error; err != nil {
-			return fmt.Errorf("failed to create index %s: %w", idx.name, err)
-		}
+	// Finance domain (use created_at; there is no `date` column)
+	if err := ensureIndex(db, "expenses", "idx_expenses_user_category_date", "user_id, category, created_at"); err != nil {
+		return fmt.Errorf("failed idx_expenses_user_category_date: %w", err)
+	}
+	if err := ensureIndex(db, "incomes", "idx_incomes_user_active_date", "user_id, is_active, created_at"); err != nil {
+		return fmt.Errorf("failed idx_incomes_user_active_date: %w", err)
+	}
+
+	// Medical expense analysis
+	if err := ensureIndex(db, "medical_expenses", "idx_medical_expenses_coverage", "user_id, is_covered, insurance_payment"); err != nil {
+		return fmt.Errorf("failed idx_medical_expenses_coverage: %w", err)
+	}
+	if err := ensureIndex(db, "medical_expenses", "idx_medical_expenses_recurring", "user_id, is_recurring, frequency"); err != nil {
+		return fmt.Errorf("failed idx_medical_expenses_recurring: %w", err)
 	}
 
 	return nil
@@ -199,51 +299,19 @@ func createCompositeIndexes(db *gorm.DB) error {
 
 // createAdditionalConstraints creates additional database constraints
 func createAdditionalConstraints(db *gorm.DB) error {
-	constraints := []struct {
-		name  string
-		query string
-	}{
-		// Ensure one health profile per user
-		{
-			name:  "unique_user_health_profile",
-			query: "ALTER TABLE health_profiles ADD CONSTRAINT unique_user_health_profile UNIQUE (user_id)",
-		},
-		// Ensure policy numbers are globally unique
-		{
-			name:  "unique_policy_number",
-			query: "ALTER TABLE insurance_policies ADD CONSTRAINT unique_policy_number UNIQUE (policy_number)",
-		},
-		// Ensure reasonable BMI constraints
-		{
-			name:  "check_reasonable_bmi",
-			query: "ALTER TABLE health_profiles ADD CONSTRAINT check_reasonable_bmi CHECK (bmi >= 10 AND bmi <= 100)",
-		},
-		// Ensure positive amounts for expenses
-		{
-			name:  "check_positive_medical_expense",
-			query: "ALTER TABLE medical_expenses ADD CONSTRAINT check_positive_medical_expense CHECK (amount > 0)",
-		},
-		// Ensure insurance payment doesn't exceed expense amount
-		{
-			name:  "check_insurance_payment_reasonable",
-			query: "ALTER TABLE medical_expenses ADD CONSTRAINT check_insurance_payment_reasonable CHECK (insurance_payment <= amount)",
-		},
-		// Ensure deductible doesn't exceed out-of-pocket max
-		{
-			name:  "check_deductible_reasonable",
-			query: "ALTER TABLE insurance_policies ADD CONSTRAINT check_deductible_reasonable CHECK (deductible <= out_of_pocket_max)",
-		},
+	// Unique constraints — create as UNIQUE constraints by name
+	if err := ensureUniqueConstraint(db, "health_profiles", "unique_user_health_profile", "user_id"); err != nil {
+		return fmt.Errorf("failed unique_user_health_profile: %w", err)
+	}
+	if err := ensureUniqueConstraint(db, "insurance_policies", "unique_policy_number", "policy_number"); err != nil {
+		return fmt.Errorf("failed unique_policy_number: %w", err)
 	}
 
-	for _, constraint := range constraints {
-		if err := db.Exec(constraint.query).Error; err != nil {
-			// Many databases don't support IF NOT EXISTS for constraints
-			// So we ignore errors for existing constraints
-			if !isConstraintExistsError(err) {
-				return fmt.Errorf("failed to create constraint %s: %w", constraint.name, err)
-			}
-		}
-	}
+	// CHECK constraints — best-effort (ignored on servers that don’t support/enforce)
+	_ = ensureCheckConstraint(db, "health_profiles", "check_reasonable_bmi", "bmi >= 10 AND bmi <= 100")
+	_ = ensureCheckConstraint(db, "medical_expenses", "check_positive_medical_expense", "amount > 0")
+	_ = ensureCheckConstraint(db, "medical_expenses", "check_insurance_payment_reasonable", "insurance_payment <= amount")
+	_ = ensureCheckConstraint(db, "insurance_policies", "check_deductible_reasonable", "deductible <= out_of_pocket_max")
 
 	return nil
 }
@@ -258,11 +326,11 @@ func RollbackHealthMigrations(db *gorm.DB) error {
 	// Drop health tables in reverse order
 	tables := []string{
 		"medical_expenses",
-		"medical_conditions", 
+		"medical_conditions",
 		"insurance_policies",
 		"health_profiles",
 	}
-	
+
 	for _, table := range tables {
 		if db.Migrator().HasTable(table) {
 			if err := db.Migrator().DropTable(table); err != nil {
@@ -270,7 +338,7 @@ func RollbackHealthMigrations(db *gorm.DB) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -318,12 +386,12 @@ func ValidateMigrationIntegrity(db *gorm.DB) error {
 
 	// Check critical columns exist
 	criticalColumns := map[string][]string{
-		"health_profiles": {"user_id", "age", "gender", "height", "weight", "bmi"},
+		"health_profiles":    {"user_id", "age", "gender", "height", "weight", "bmi"},
 		"medical_conditions": {"user_id", "profile_id", "name", "severity", "is_active"},
-		"medical_expenses": {"user_id", "profile_id", "amount", "category", "date"},
+		"medical_expenses":   {"user_id", "profile_id", "amount", "category", "date"},
 		"insurance_policies": {"user_id", "policy_number", "type", "deductible", "out_of_pocket_max"},
-		"decision_records": {"user_id", "intent_id", "item_name", "item_cost", "category", "decision", "confidence"},
-		"ai_prompt_logs": {"user_id", "request_id", "ai_provider", "max_tokens", "tokens_input", "tokens_output", "success"},
+		"decision_records":   {"user_id", "intent_id", "item_name", "item_cost", "category", "decision", "confidence"},
+		"ai_prompt_logs":     {"user_id", "request_id", "ai_provider", "max_tokens", "tokens_input", "tokens_output", "success"},
 	}
 
 	for table, columns := range criticalColumns {
@@ -351,4 +419,3 @@ func SetupTestDatabase(db *gorm.DB) error {
 
 	return nil
 }
-

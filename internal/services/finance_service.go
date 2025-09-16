@@ -75,6 +75,11 @@ func (s *financeService) GetActiveUserIncomes(ctx context.Context, userID string
 	return s.repos.Income.GetActiveIncomes(ctx, userID)
 }
 
+// GetIncomeByID retrieves a specific income record by ID
+func (s *financeService) GetIncomeByID(ctx context.Context, incomeID string) (domain.Income, error) {
+	return s.repos.Income.GetIncomeByID(ctx, incomeID)
+}
+
 // AddExpense validates and adds a new expense record
 func (s *financeService) AddExpense(ctx context.Context, expense domain.Expense) error {
 	if err := expense.Validate(); err != nil {
@@ -128,6 +133,11 @@ func (s *financeService) GetUserExpensesByCategory(ctx context.Context, userID, 
 	return s.repos.Expense.GetExpensesByCategory(ctx, userID, category)
 }
 
+// GetExpenseByID retrieves a specific expense record by ID
+func (s *financeService) GetExpenseByID(ctx context.Context, expenseID string) (domain.Expense, error) {
+	return s.repos.Expense.GetExpenseByID(ctx, expenseID)
+}
+
 // AddLoan validates and adds a new loan record
 func (s *financeService) AddLoan(ctx context.Context, loan domain.Loan) error {
 	if err := loan.Validate(); err != nil {
@@ -159,6 +169,11 @@ func (s *financeService) UpdateLoan(ctx context.Context, loan domain.Loan) error
 // GetUserLoans retrieves all loan records for a user
 func (s *financeService) GetUserLoans(ctx context.Context, userID string) ([]domain.Loan, error) {
 	return s.repos.Loan.GetUserLoans(ctx, userID)
+}
+
+// GetLoanByID retrieves a specific loan record by ID
+func (s *financeService) GetLoanByID(ctx context.Context, loanID string) (domain.Loan, error) {
+	return s.repos.Loan.GetLoanByID(ctx, loanID)
 }
 
 // UpdateLoanBalance updates the remaining balance for a loan after verifying ownership
@@ -321,4 +336,21 @@ func (s *financeService) NormalizeToMonthly(amount float64, frequency string) (f
 	default:
 		return 0, fmt.Errorf("unsupported frequency: %s", frequency)
 	}
+}
+
+// UI Helper Methods (non-context versions for template compatibility)
+
+// GetFinanceSummary provides UI-compatible method without context
+func (s *financeService) GetFinanceSummary(userID string) (domain.FinanceSummary, error) {
+	return s.CalculateFinanceSummary(context.Background(), userID)
+}
+
+// GetIncomes provides UI-compatible method without context
+func (s *financeService) GetIncomes(userID string) ([]domain.Income, error) {
+	return s.GetUserIncomes(context.Background(), userID)
+}
+
+// GetExpenseByIDUI provides UI-compatible method to get a specific expense
+func (s *financeService) GetExpenseByIDUI(userID string, expenseID uint) (domain.Expense, error) {
+	return s.repos.Expense.GetExpenseByID(context.Background(), fmt.Sprintf("%d", expenseID))
 }

@@ -1,6 +1,6 @@
 package partials
 
-import "github.com/DuckDHD/BuyOrBye/internal/types"
+import "fmt"
 
 templ DecisionResult(result *DecisionResultDTO) {
 	<div 
@@ -77,7 +77,7 @@ templ DecisionResult(result *DecisionResultDTO) {
 				<div class="relative">
 					<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden">
 						<div 
-							class={ "h-full transition-all duration-2000 ease-out rounded-full " + getConfidenceBarColor(result.Confidence) }
+							class={ "h-full transition-all duration-2000 ease-out rounded-full " + getResultConfidenceBarColor(result.Confidence) }
 							:style="`width: ${animatedConfidence}%`"
 						></div>
 					</div>
@@ -455,7 +455,7 @@ func getDecisionIconBg(decision string) string {
 	}
 }
 
-func getConfidenceBarColor(confidence int) string {
+func getResultConfidenceBarColor(confidence int) string {
 	if confidence >= 80 {
 		return "bg-green-500"
 	} else if confidence >= 60 {

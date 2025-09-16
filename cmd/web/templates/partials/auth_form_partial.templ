@@ -1,5 +1,7 @@
 package partials
 
+import "fmt"
+
 templ AuthErrorDisplay(errors []string) {
 	<div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4 mb-4 border border-red-200 dark:border-red-800">
 		<div class="flex">
@@ -227,7 +229,7 @@ templ SocialLoginButton(provider, iconSvg string, disabled bool) {
 			disabled
 		}
 	>
-		{ templ.Raw(iconSvg) }
+		{ iconSvg }
 		<span class="ml-2">{ provider }</span>
 	</button>
 }

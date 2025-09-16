@@ -46,19 +46,31 @@ type DebtCalculator interface {
 	CalculateMinimumPayment(principalAmount, interestRate float64, termMonths int) float64
 }
 
-// FinanceService interface is consumed by analyzer services in this package
+// FinanceService interface is consumed by analyzer services and handlers in this package
 // Following the consumer-defined principle - this belongs here because analyzers consume it
 type FinanceService interface {
 	// Income operations
+	AddIncome(ctx context.Context, income domain.Income) error
+	UpdateIncome(ctx context.Context, income domain.Income) error
+	DeleteIncome(ctx context.Context, userID, incomeID string) error
 	GetUserIncomes(ctx context.Context, userID string) ([]domain.Income, error)
 	GetActiveUserIncomes(ctx context.Context, userID string) ([]domain.Income, error)
+	GetIncomeByID(ctx context.Context, incomeID string) (domain.Income, error)
 
-	// Expense operations  
+	// Expense operations
+	AddExpense(ctx context.Context, expense domain.Expense) error
+	UpdateExpense(ctx context.Context, expense domain.Expense) error
+	DeleteExpense(ctx context.Context, userID, expenseID string) error
 	GetUserExpenses(ctx context.Context, userID string) ([]domain.Expense, error)
 	GetUserExpensesByCategory(ctx context.Context, userID, category string) ([]domain.Expense, error)
+	GetExpenseByID(ctx context.Context, expenseID string) (domain.Expense, error)
 
 	// Loan operations
+	AddLoan(ctx context.Context, loan domain.Loan) error
+	UpdateLoan(ctx context.Context, loan domain.Loan) error
 	GetUserLoans(ctx context.Context, userID string) ([]domain.Loan, error)
+	UpdateLoanBalance(ctx context.Context, userID, loanID string, newBalance float64) error
+	GetLoanByID(ctx context.Context, loanID string) (domain.Loan, error)
 
 	// Financial analysis
 	CalculateFinanceSummary(ctx context.Context, userID string) (domain.FinanceSummary, error)

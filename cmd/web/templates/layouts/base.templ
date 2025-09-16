@@ -1,7 +1,5 @@
 package layouts
 
-import "github.com/DuckDHD/BuyOrBye/internal/types"
-
 templ Base(title string, csrfToken string) {
 	<!DOCTYPE html>
 	<html lang="en" class="h-full">
@@ -21,11 +19,7 @@ templ Base(title string, csrfToken string) {
 		
 		<!-- HTMX -->
 		<script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
-		<script>
-			document.body.addEventListener('htmx:configRequest', (event) => {
-				event.detail.headers['X-CSRF-Token'] = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-			});
-		</script>
+		<script src="/static/js/htmx.boot.js" defer></script>
 		
 		<!-- Alpine.js stores -->
 		<script src="/static/js/stores.js"></script>

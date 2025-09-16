@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
-	"github.com/DuckDHD/BuyOrBye/internal/dtos"
+	"github.com/DuckDHD/BuyOrBye/internal/types"
 	"github.com/DuckDHD/BuyOrBye/internal/logging"
 )
 
@@ -95,7 +95,7 @@ func TestAuthHandler_Login_ValidCredentials_Returns200AndTokens(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	loginRequest := dtos.LoginRequestDTO{
+	loginRequest := types.LoginRequestDTO{
 		Email:    "test@example.com",
 		Password: "password123",
 	}
@@ -116,7 +116,7 @@ func TestAuthHandler_Login_ValidCredentials_Returns200AndTokens(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusOK, w.Code)
 	
-	var response dtos.TokenResponseDTO
+	var response types.TokenResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -133,7 +133,7 @@ func TestAuthHandler_Login_InvalidCredentials_Returns401(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	loginRequest := dtos.LoginRequestDTO{
+	loginRequest := types.LoginRequestDTO{
 		Email:    "test@example.com",
 		Password: "wrongpassword",
 	}
@@ -152,7 +152,7 @@ func TestAuthHandler_Login_InvalidCredentials_Returns401(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -167,7 +167,7 @@ func TestAuthHandler_Login_InvalidEmailFormat_Returns400(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	loginRequest := dtos.LoginRequestDTO{
+	loginRequest := types.LoginRequestDTO{
 		Email:    "invalid-email",
 		Password: "password123",
 	}
@@ -183,7 +183,7 @@ func TestAuthHandler_Login_InvalidEmailFormat_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	
-	var response dtos.ValidationErrorResponseDTO
+	var response types.ValidationErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -208,7 +208,7 @@ func TestAuthHandler_Login_MalformedJSON_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -224,7 +224,7 @@ func TestAuthHandler_Register_ValidData_Returns201AndTokens(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	registerRequest := dtos.RegisterRequestDTO{
+	registerRequest := types.RegisterRequestDTO{
 		Email:    "newuser@example.com",
 		Name:     "New User",
 		Password: "password123",
@@ -246,7 +246,7 @@ func TestAuthHandler_Register_ValidData_Returns201AndTokens(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusCreated, w.Code)
 	
-	var response dtos.TokenResponseDTO
+	var response types.TokenResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -263,7 +263,7 @@ func TestAuthHandler_Register_DuplicateEmail_Returns409(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	registerRequest := dtos.RegisterRequestDTO{
+	registerRequest := types.RegisterRequestDTO{
 		Email:    "existing@example.com",
 		Name:     "User",
 		Password: "password123",
@@ -283,7 +283,7 @@ func TestAuthHandler_Register_DuplicateEmail_Returns409(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusConflict, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -298,7 +298,7 @@ func TestAuthHandler_Register_InvalidData_Returns400(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	registerRequest := dtos.RegisterRequestDTO{
+	registerRequest := types.RegisterRequestDTO{
 		Email:    "invalid-email",
 		Name:     "",
 		Password: "short",
@@ -315,7 +315,7 @@ func TestAuthHandler_Register_InvalidData_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	
-	var response dtos.ValidationErrorResponseDTO
+	var response types.ValidationErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -331,7 +331,7 @@ func TestAuthHandler_RefreshToken_ValidToken_Returns200AndNewTokens(t *testing.T
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	refreshRequest := dtos.RefreshTokenRequestDTO{
+	refreshRequest := types.RefreshTokenRequestDTO{
 		RefreshToken: "valid_refresh_token",
 	}
 	expectedTokenPair := createValidTokenPair()
@@ -350,7 +350,7 @@ func TestAuthHandler_RefreshToken_ValidToken_Returns200AndNewTokens(t *testing.T
 	// Assert
 	assert.Equal(t, http.StatusOK, w.Code)
 	
-	var response dtos.TokenResponseDTO
+	var response types.TokenResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -367,7 +367,7 @@ func TestAuthHandler_RefreshToken_InvalidToken_Returns401(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	refreshRequest := dtos.RefreshTokenRequestDTO{
+	refreshRequest := types.RefreshTokenRequestDTO{
 		RefreshToken: "invalid_token",
 	}
 	
@@ -385,7 +385,7 @@ func TestAuthHandler_RefreshToken_InvalidToken_Returns401(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -400,7 +400,7 @@ func TestAuthHandler_RefreshToken_MissingToken_Returns400(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	refreshRequest := dtos.RefreshTokenRequestDTO{
+	refreshRequest := types.RefreshTokenRequestDTO{
 		RefreshToken: "",
 	}
 	
@@ -415,7 +415,7 @@ func TestAuthHandler_RefreshToken_MissingToken_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	
-	var response dtos.ValidationErrorResponseDTO
+	var response types.ValidationErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -431,7 +431,7 @@ func TestAuthHandler_Logout_ValidToken_Returns200(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	refreshRequest := dtos.RefreshTokenRequestDTO{
+	refreshRequest := types.RefreshTokenRequestDTO{
 		RefreshToken: "valid_refresh_token",
 	}
 	
@@ -463,7 +463,7 @@ func TestAuthHandler_Logout_InvalidToken_Returns401(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	refreshRequest := dtos.RefreshTokenRequestDTO{
+	refreshRequest := types.RefreshTokenRequestDTO{
 		RefreshToken: "invalid_token",
 	}
 	
@@ -481,7 +481,7 @@ func TestAuthHandler_Logout_InvalidToken_Returns401(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -496,7 +496,7 @@ func TestAuthHandler_Login_AccountInactive_Returns401(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	loginRequest := dtos.LoginRequestDTO{
+	loginRequest := types.LoginRequestDTO{
 		Email:    "inactive@example.com",
 		Password: "password123",
 	}
@@ -515,7 +515,7 @@ func TestAuthHandler_Login_AccountInactive_Returns401(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -531,7 +531,7 @@ func TestAuthHandler_RefreshToken_TokenExpired_Returns401(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	refreshRequest := dtos.RefreshTokenRequestDTO{
+	refreshRequest := types.RefreshTokenRequestDTO{
 		RefreshToken: "expired_token",
 	}
 	
@@ -549,7 +549,7 @@ func TestAuthHandler_RefreshToken_TokenExpired_Returns401(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -574,7 +574,7 @@ func TestAuthHandler_Register_MalformedJSON_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -599,7 +599,7 @@ func TestAuthHandler_RefreshToken_MalformedJSON_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -624,7 +624,7 @@ func TestAuthHandler_Logout_MalformedJSON_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -640,7 +640,7 @@ func TestAuthHandler_Logout_EmptyToken_Returns400(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	refreshRequest := dtos.RefreshTokenRequestDTO{
+	refreshRequest := types.RefreshTokenRequestDTO{
 		RefreshToken: "",
 	}
 	
@@ -655,7 +655,7 @@ func TestAuthHandler_Logout_EmptyToken_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	
-	var response dtos.ValidationErrorResponseDTO
+	var response types.ValidationErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -671,7 +671,7 @@ func TestAuthHandler_Login_RequiredFieldsMissing_Returns400(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	loginRequest := dtos.LoginRequestDTO{
+	loginRequest := types.LoginRequestDTO{
 		Email:    "",
 		Password: "",
 	}
@@ -687,7 +687,7 @@ func TestAuthHandler_Login_RequiredFieldsMissing_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	
-	var response dtos.ValidationErrorResponseDTO
+	var response types.ValidationErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -705,7 +705,7 @@ func TestAuthHandler_Login_PasswordTooShort_Returns400(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	loginRequest := dtos.LoginRequestDTO{
+	loginRequest := types.LoginRequestDTO{
 		Email:    "test@example.com",
 		Password: "short",
 	}
@@ -721,7 +721,7 @@ func TestAuthHandler_Login_PasswordTooShort_Returns400(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	
-	var response dtos.ValidationErrorResponseDTO
+	var response types.ValidationErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	
@@ -738,7 +738,7 @@ func TestAuthHandler_Register_InternalServerError_Returns500(t *testing.T) {
 	mockAuthService := new(MockAuthService)
 	router := setupTestRouter(mockAuthService)
 	
-	registerRequest := dtos.RegisterRequestDTO{
+	registerRequest := types.RegisterRequestDTO{
 		Email:    "test@example.com",
 		Name:     "Test User",
 		Password: "password123",
@@ -760,7 +760,7 @@ func TestAuthHandler_Register_InternalServerError_Returns500(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	

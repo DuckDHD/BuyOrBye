@@ -4,11 +4,10 @@ import (
 	"github.com/DuckDHD/BuyOrBye/internal/types"
 	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
 	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
-	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/partials"
 )
 
-templ FinanceOverviewPage(user *types.UserResponseDTO, csrfToken string) {
-	@layouts.App("Finance Overview", csrfToken, user, "/finance") {
+templ FinanceOverviewPage(dto types.FinanceOverviewPageDTO) {
+	@layouts.App("Finance Overview", dto.Layout.CSRFToken, dto.Layout.User, "/finance") {
 		<div class="space-y-8" x-data="financeOverview()">
 			<!-- Page Header -->
 			<div class="flex items-center justify-between">

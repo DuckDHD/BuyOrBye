@@ -1,6 +1,13 @@
 package components
 
-templ ErrorBanner(message, type_attr, id string) {
+import "fmt"
+
+// Simple error banner with just message (defaults to error type)
+templ ErrorBanner(message string) {
+	@ErrorBannerFull(message, "error", "error-banner")
+}
+
+templ ErrorBannerFull(message, type_attr, id string) {
 	<div 
 		class={ "rounded-md p-4 mb-4 border transition-all duration-500 ease-out " + getBannerClasses(type_attr) }
 		x-data="{ show: true, dismissed: false }"

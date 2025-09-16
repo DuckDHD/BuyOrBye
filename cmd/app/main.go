@@ -1,7 +1,9 @@
+// cmd/app/main.go
 package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -12,11 +14,13 @@ import (
 
 	"github.com/DuckDHD/BuyOrBye/internal/config"
 	"github.com/DuckDHD/BuyOrBye/internal/database"
+	"github.com/DuckDHD/BuyOrBye/internal/domain"
 	"github.com/DuckDHD/BuyOrBye/internal/handlers"
 	"github.com/DuckDHD/BuyOrBye/internal/logging"
 	"github.com/DuckDHD/BuyOrBye/internal/middleware"
 	"github.com/DuckDHD/BuyOrBye/internal/repositories"
 	"github.com/DuckDHD/BuyOrBye/internal/services"
+	"github.com/DuckDHD/BuyOrBye/internal/types"
 )
 
 func main() {
@@ -44,7 +48,6 @@ func main() {
 	if err != nil {
 		logger.Fatal("Failed to initialize database", logging.WithError(err))
 	}
-
 	db := dbService.GetDB()
 
 	// Run migrations
@@ -64,32 +67,28 @@ func main() {
 	userRepo := repositories.NewUserRepository(db)
 	tokenRepo := repositories.NewTokenRepository(db)
 
-	// Initialize finance repositories
+	// Finance repositories
 	incomeRepo := repositories.NewIncomeRepository(db)
 	expenseRepo := repositories.NewExpenseRepository(db)
 	loanRepo := repositories.NewLoanRepository(db)
 	financeSummaryRepo := repositories.NewFinanceSummaryRepository()
-
-	// Create finance repositories aggregate
 	financeRepos := services.NewFinanceRepositories(incomeRepo, expenseRepo, loanRepo, financeSummaryRepo)
 
-	// Initialize health repositories
+	// Health repositories
 	healthProfileRepo := repositories.NewHealthProfileRepository(db)
 	conditionRepo := repositories.NewMedicalConditionRepository(db)
 	medicalExpenseRepo := repositories.NewMedicalExpenseRepository(db)
 	policyRepo := repositories.NewInsurancePolicyRepository(db)
 
-	// Initialize health analysis services
+	// Health analysis services
 	riskCalculator := services.NewRiskCalculator()
 	costAnalyzer := services.NewMedicalCostAnalyzer()
 
-	// Initialize services
+	// Domain services
 	authService := services.NewAuthService(userRepo, tokenRepo, passwordService, jwtService)
 	financeService := services.NewFinanceService(financeRepos)
-	// budgetAnalyzer will be used for future analysis endpoints
-	_ = services.NewBudgetAnalyzer(financeService)
+	_ = services.NewBudgetAnalyzer(financeService) // kept for future use
 
-	// Initialize health service
 	healthService := services.NewHealthService(
 		healthProfileRepo,
 		conditionRepo,
@@ -99,43 +98,27 @@ func main() {
 		costAnalyzer,
 	)
 
-	// TODO: Initialize decision domain components
-	// Currently disabled due to interface compatibility issues that need to be resolved
-	// The following components are available but need proper adapter interfaces:
-	//
-	// decisionRepo := repositories.NewDecisionRepository(db)
-	// promptLogRepo := repositories.NewPromptLogRepository(db)
-	// openaiClient := clients.NewOpenAIClient()
-	// contextAggregator := services.NewContextAggregator(financeService, healthService, decisionRepo)
-	// promptBuilder := services.NewPromptBuilder()
-	// decisionInterpreter := services.NewDecisionInterpreter()
-	// recommendationEngine := services.NewRecommendationEngine()
-	// enhancedDecisionService := services.NewEnhancedDecisionService(...)
+	// Mock decision service (placeholder)
+	decisionServiceInterface := &mockDecisionServiceDirect{}
+	var financeServiceInterface handlers.FinanceServiceInterface = financeService
 
-	// Decision service interface placeholder - will be implemented after interface resolution
-	var decisionServiceInterface handlers.DecisionServiceInterface = nil
-	var financeServiceInterface handlers.FinanceServiceInterface = nil
-
-	// Initialize handlers
+	// Handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	financeHandler := handlers.NewFinanceHandler(financeServiceInterface)
 	healthHandler := handlers.NewHealthHandler(healthService)
-	// Only initialize decision handler if service is available
-	var decisionHandler *handlers.DecisionHandler
-	if decisionServiceInterface != nil {
-		decisionHandler = handlers.NewDecisionHandler(decisionServiceInterface)
-	}
+	decisionHandler := handlers.NewDecisionHandler(decisionServiceInterface)
 
-	// Initialize middlewares
+	// UI handlers
+	uiHandlers := handlers.NewUIHandlers(authService, financeServiceInterface, healthService, decisionServiceInterface)
+
+	// Middlewares
 	jwtAuthMiddleware := middleware.NewJWTAuthMiddleware(jwtService)
 
-	// Setup Gin router
+	// Gin router
 	router := gin.Default()
 
-	// Global middleware with config
+	// Global middleware
 	router.Use(middleware.CORS())
-
-	// Configure logging middleware based on environment
 	middlewareConfig := config.GetMiddlewareConfig(cfg.Server.Environment)
 	loggingConfig := logging.HTTPLoggingConfig{
 		SkipPaths:       middlewareConfig.SkipPaths,
@@ -146,10 +129,11 @@ func main() {
 	router.Use(logging.HTTPLoggingMiddleware(loggingConfig))
 	router.Use(logging.ErrorLoggingMiddleware())
 	router.Use(logging.RequestIDMiddleware())
+	router.Use(middleware.CSRFMiddleware())
 	router.Use(middleware.ValidateRequestLimits())
 
 	// Health check
-	router.GET("/health", func(c *gin.Context) {
+	router.GET("/api/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":  "ok",
 			"message": "BuyOrBye API is running",
@@ -157,19 +141,18 @@ func main() {
 	})
 
 	// UI Routes (Frontend/Web Interface)
-	setupUIRoutes(router, authHandler, financeHandler, healthHandler, decisionHandler, jwtAuthMiddleware)
+	setupUIRoutes(router, uiHandlers, jwtAuthMiddleware)
 
 	// API routes
 	api := router.Group("/api/v1")
 
-	// Auth routes (public)
+	// ===== Auth (public + protected) =====
 	auth := api.Group("/auth")
 	{
 		auth.POST("/register", authHandler.Register)
 		auth.POST("/login", authHandler.Login)
 		auth.POST("/refresh", authHandler.RefreshToken)
 
-		// Protected auth routes
 		protected := auth.Group("")
 		protected.Use(jwtAuthMiddleware.RequireAuth())
 		{
@@ -177,12 +160,12 @@ func main() {
 		}
 	}
 
-	// Finance routes (all require auth)
+	// ===== Finance (protected) =====
 	finance := api.Group("/finance")
 	finance.Use(jwtAuthMiddleware.RequireAuth())
 	finance.Use(middleware.ValidateOwnership())
 	{
-		// Income endpoints
+		// Income
 		finance.POST("/income",
 			middleware.ValidateFinancialData(),
 			middleware.NormalizeFrequency(),
@@ -197,7 +180,7 @@ func main() {
 			middleware.ValidateUserOwnership("income"),
 			financeHandler.DeleteIncome)
 
-		// Expense endpoints
+		// Expense
 		finance.POST("/expense",
 			middleware.ValidateFinancialData(),
 			middleware.NormalizeFrequency(),
@@ -212,7 +195,7 @@ func main() {
 			middleware.ValidateUserOwnership("expense"),
 			financeHandler.DeleteExpense)
 
-		// Loan endpoints
+		// Loan
 		finance.POST("/loan",
 			middleware.ValidateFinancialData(),
 			financeHandler.AddLoan)
@@ -222,20 +205,17 @@ func main() {
 			middleware.ValidateFinancialData(),
 			financeHandler.UpdateLoan)
 
-		// Analysis endpoints
+		// Analysis
 		finance.GET("/summary", financeHandler.GetFinanceSummary)
 		finance.GET("/affordability", financeHandler.GetAffordability)
-
-		// Add spending insights endpoint when implemented
-		// finance.GET("/insights", financeHandler.GetSpendingInsights)
 	}
 
-	// Health routes (all require auth)
+	// ===== Health (protected) =====
 	health := api.Group("/health")
 	health.Use(jwtAuthMiddleware.RequireAuth())
 	health.Use(middleware.SanitizeSensitiveData())
 	{
-		// Profile endpoints
+		// Profiles
 		health.POST("/profiles",
 			middleware.ValidateHealthProfileData(),
 			healthHandler.CreateProfile)
@@ -256,7 +236,7 @@ func main() {
 			middleware.ValidateHealthOwnership(),
 			healthHandler.CalculateRisk)
 
-		// Condition endpoints
+		// Conditions
 		health.POST("/conditions",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.CreateCondition)
@@ -269,11 +249,11 @@ func main() {
 		health.DELETE("/conditions/:id",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.RemoveCondition)
-		health.GET("/profiles/:profileId/conditions",
+		health.GET("/profiles/:id/conditions",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.GetConditionsByProfile)
 
-		// Policy endpoints
+		// Policies
 		health.POST("/policies",
 			middleware.ValidateInsuranceDates(),
 			middleware.ValidateHealthOwnership(),
@@ -288,11 +268,11 @@ func main() {
 		health.DELETE("/policies/:id",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.DeletePolicy)
-		health.GET("/profiles/:profileId/policies",
+		health.GET("/profiles/:id/policies",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.GetPoliciesByProfile)
 
-		// Expense endpoints
+		// Expenses
 		health.POST("/expenses",
 			middleware.ValidateExpenseData(),
 			middleware.ValidateHealthOwnership(),
@@ -307,30 +287,25 @@ func main() {
 		health.DELETE("/expenses/:id",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.DeleteExpense)
-		health.GET("/profiles/:profileId/expenses",
+		health.GET("/profiles/:id/expenses",
 			middleware.ValidateHealthOwnership(),
 			healthHandler.GetExpensesByProfile)
 	}
 
-	// Decision routes (all require auth) - Only enable if service is available
+	// ===== Decision (protected - available) =====
 	if decisionHandler != nil {
 		decision := api.Group("/decision")
 		decision.Use(jwtAuthMiddleware.RequireAuth())
 		{
-			// Decision evaluation endpoint
 			decision.POST("/evaluate",
 				middleware.ValidateRequestLimits(),
 				decisionHandler.MakeDecision)
-
-			// Decision history endpoint
 			decision.GET("/history", decisionHandler.GetDecisionHistory)
-
-			// Decision statistics endpoint
 			decision.GET("/stats", decisionHandler.GetDecisionStats)
 		}
 	}
 
-	// Create HTTP server with config
+	// HTTP server
 	serverService := config.NewServerService(&cfg.Server)
 	server := serverService.CreateServer(router)
 
@@ -339,55 +314,42 @@ func main() {
 		zap.String("address", serverService.GetAddress()),
 		zap.String("environment", cfg.Server.Environment))
 
-	// Create a done channel to signal when the shutdown is complete
+	// Graceful shutdown
 	done := make(chan bool, 1)
-
-	// Run graceful shutdown in a separate goroutine
 	go gracefulShutdown(server, done)
 
-	// Start the server
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logger.Fatal("HTTP server error", logging.WithError(err))
 	}
 
-	// Wait for the graceful shutdown to complete
 	<-done
 	logger.Info("Graceful shutdown complete")
 }
 
 func gracefulShutdown(server *http.Server, done chan bool) {
-	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Listen for the interrupt signal.
 	<-ctx.Done()
 
 	logger := logging.GetLogger()
 	logger.Info("Shutting down gracefully, press Ctrl+C again to force")
-	stop() // Allow Ctrl+C to force shutdown
+	stop()
 
-	// The context is used to inform the server it has 5 seconds to finish
-	// the request it is currently handling
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
 		logger.Error("Server forced to shutdown", logging.WithError(err))
 	}
-
 	logger.Info("Server exiting")
 
-	// Notify the main goroutine that the shutdown is complete
 	done <- true
 }
 
 // setupUIRoutes organizes frontend UI routes with proper separation
 func setupUIRoutes(
 	router *gin.Engine,
-	authHandler *handlers.AuthHandler,
-	financeHandler *handlers.FinanceHandler,
-	healthHandler *handlers.HealthHandler,
-	decisionHandler *handlers.DecisionHandler,
+	uiHandlers *handlers.UIHandlers,
 	jwtAuthMiddleware *middleware.JWTAuthMiddleware,
 ) {
 	// Static assets with caching
@@ -396,179 +358,171 @@ func setupUIRoutes(
 	router.StaticFile("/manifest.json", "cmd/web/static/manifest.json")
 	router.StaticFile("/robots.txt", "cmd/web/static/robots.txt")
 
-	// Public UI routes (no auth required)
+	// Public routes
 	router.GET("/", redirectToDashboard)
-	router.GET("/login", renderLoginPage)
-	router.GET("/register", renderRegisterPage)
-	router.GET("/forgot-password", renderForgotPasswordPage)
+	router.GET("/auth/login", uiHandlers.LoginPage)
+	router.GET("/auth/register", uiHandlers.RegisterPage)
 
-	// Protected UI routes group
+	// Public form actions
+	router.POST("/auth/login", uiHandlers.LoginAction)
+	router.POST("/auth/register", uiHandlers.RegisterAction)
+
+	// Test POST route for CSRF protection
+	router.POST("/test-csrf", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "CSRF protection passed!",
+			"data":    c.PostForm("test_data"),
+		})
+	})
+
+	// Protected routes
 	protected := router.Group("")
-	protected.Use(jwtAuthMiddleware.RequireAuth())
+	// protected.Use(jwtAuthMiddleware.RequireAuth())
 	{
-		// Main page routes - return full HTML pages
-		protected.GET("/dashboard", renderDashboardPage)
-		protected.GET("/finance", renderFinanceOverviewPage)
-		protected.GET("/health", renderHealthProfilePage)
-		protected.GET("/decisions/new", renderDecisionNewPage)
-		protected.GET("/decisions/history", renderDecisionHistoryPage)
+		// Pages
+		protected.GET("/dashboard", uiHandlers.DashboardPage)
+		protected.GET("/finance", uiHandlers.FinanceOverviewPage)
+		protected.GET("/health", uiHandlers.HealthProfilePage)
+		protected.GET("/decisions/new", uiHandlers.DecisionNewPage)
+		protected.GET("/decisions/history", uiHandlers.DecisionHistoryPage)
 
-		// HTMX partial routes group - return HTML fragments only
+		// Partials
 		ui := protected.Group("/ui/partials")
 		{
-			// Dashboard partials
-			ui.GET("/dashboard/stats", renderDashboardStatsPartial)
-			ui.GET("/dashboard/quick-decision", renderQuickDecisionPartial)
-			ui.GET("/dashboard/recent-decisions", renderRecentDecisionsPartial)
-			ui.GET("/dashboard/content", renderDashboardContentPartial)
-			ui.GET("/dashboard/below-fold", renderDashboardBelowFoldPartial)
-			ui.GET("/dashboard/insights", renderDashboardInsightsPartial)
+			ui.GET("/dashboard/content", uiHandlers.DashboardContentPartial)
 
-			// Finance partials
-			ui.GET("/finance/overview", renderFinanceOverviewPartial)
-			ui.GET("/finance/summary", renderFinanceSummaryPartial)
-			ui.GET("/finance/income/list", renderIncomeListPartial)
-			ui.GET("/finance/expense/form", renderExpenseFormPartial)
+			ui.GET("/finance/overview", uiHandlers.FinanceOverviewPartial)
+			ui.GET("/finance/summary", uiHandlers.FinanceSummaryPartial)
+			ui.GET("/finance/income/list", uiHandlers.IncomeListPartial)
+			ui.GET("/finance/expense/form", uiHandlers.ExpenseFormPartial)
 
-			// Health partials
-			ui.GET("/health/profile", renderHealthProfilePartial)
-			ui.GET("/health/risk-gauge/:profileId", renderHealthRiskGaugePartial)
-			ui.GET("/health/condition/add", renderConditionAddPartial)
-			ui.GET("/health/insurance/card/:policyId", renderInsuranceCardPartial)
+			// NOTE: aligned param names for consistency
+			ui.GET("/health/risk-gauge/:id", uiHandlers.HealthRiskGaugePartial)
+			ui.GET("/health/condition/add", uiHandlers.ConditionAddPartial)
+			ui.GET("/health/insurance/card/:id", uiHandlers.InsuranceCardPartial)
 
-			// Decision partials
-			if decisionHandler != nil {
-				ui.GET("/decision/result", renderDecisionResultPartial)
-				ui.GET("/decision/filter", renderDecisionFilterPartial)
-			}
+			ui.GET("/decision/result", uiHandlers.DecisionResultPartial)
+			ui.GET("/decision/filter", uiHandlers.DecisionFilterPartial)
 		}
+
+		// Form actions
+		protected.POST("/auth/logout", uiHandlers.LogoutAction)
+
+		protected.POST("/finance/income", uiHandlers.FinanceCreateIncomeAction)
+		protected.PUT("/finance/income/:id", uiHandlers.FinanceUpdateIncomeAction)
+		protected.DELETE("/finance/income/:id", uiHandlers.FinanceDeleteIncomeAction)
+
+		protected.POST("/finance/expense", uiHandlers.FinanceCreateExpenseAction)
+		protected.PUT("/finance/expense/:id", uiHandlers.FinanceUpdateExpenseAction)
+		protected.DELETE("/finance/expense/:id", uiHandlers.FinanceDeleteExpenseAction)
+
+		protected.POST("/health/profile", uiHandlers.HealthCreateProfileAction)
+		protected.PUT("/health/profile/:id", uiHandlers.HealthUpdateProfileAction)
+		protected.DELETE("/health/profile/:id", uiHandlers.HealthDeleteProfileAction)
+
+		protected.POST("/decisions", uiHandlers.DecisionCreateAction)
 	}
 }
 
-// Page handlers - return full HTML pages
-
+// redirectToDashboard is a simple redirect helper for the root route
 func redirectToDashboard(c *gin.Context) {
 	c.Redirect(302, "/dashboard")
 }
 
-func renderLoginPage(c *gin.Context) {
-	// TODO: Implement login page rendering using existing templates
-	c.String(200, "Login Page - TODO: Implement with existing auth templates")
+// ================================
+// MOCK DECISION SERVICE IMPLEMENTATION
+// ================================
+
+type mockDecisionServiceDirect struct{}
+
+// MakeDecision implements a simple decision logic for testing
+func (m *mockDecisionServiceDirect) MakeDecision(ctx context.Context, intentDTO types.PurchaseIntentDTO) (*types.DecisionResponseDTO, error) {
+	var decision string
+	var confidence float64
+	var reason string
+	var recommendations []string
+
+	if intentDTO.ItemCost < 50 {
+		decision = "BUY"
+		confidence = 0.9
+		reason = "Low cost item - safe to purchase"
+		recommendations = []string{"Great choice!", "This is an affordable purchase"}
+	} else if intentDTO.ItemCost < 200 {
+		decision = "WAIT"
+		confidence = 0.7
+		reason = "Moderate cost - consider if this is necessary"
+		recommendations = []string{"Wait for a sale", "Consider alternatives", "Check your budget"}
+	} else {
+		decision = "BYE"
+		confidence = 0.8
+		reason = "High cost item - recommend avoiding"
+		recommendations = []string{"This exceeds recommended spending", "Look for cheaper alternatives", "Save money instead"}
+	}
+
+	if intentDTO.Category == "health" {
+		decision = "BUY"
+		confidence = 0.95
+		reason = "Health purchases are always important"
+		recommendations = []string{"Health is a priority", "Good investment in your wellbeing"}
+	}
+
+	response := &types.DecisionResponseDTO{
+		ID:            generateMockDecisionID(),
+		UserID:        intentDTO.UserID,
+		IntentID:      intentDTO.ID,
+		Decision:      decision,
+		Confidence:    confidence,
+		PrimaryReason: reason,
+		Factors: []types.DecisionFactorDTO{
+			{
+				Category:    "cost",
+				Impact:      "primary",
+				Weight:      0.8,
+				Description: fmt.Sprintf("Item cost: $%.2f", intentDTO.ItemCost),
+			},
+			{
+				Category:    "category",
+				Impact:      "secondary",
+				Weight:      0.6,
+				Description: fmt.Sprintf("Category: %s", intentDTO.Category),
+			},
+		},
+		Recommendations: recommendations,
+		WaitPeriod:      getWaitPeriod(decision),
+		MaxBudget:       intentDTO.ItemCost * 0.8,
+		CreatedAt:       time.Now(),
+		ProcessingTime:  50,
+	}
+
+	return response, nil
 }
 
-func renderRegisterPage(c *gin.Context) {
-	// TODO: Implement register page rendering using existing templates
-	c.String(200, "Register Page - TODO: Implement with existing auth templates")
+func (m *mockDecisionServiceDirect) GetDecisionHistory(ctx context.Context, userID string, days int) (*types.DecisionHistoryDTO, error) {
+	pastDecisions := []domain.PastDecision{
+		{ItemName: "Coffee Machine", ItemCost: 299.99, Category: "electronics", Decision: "BUY", DaysAgo: 5},
+		{ItemName: "Designer Shoes", ItemCost: 450.00, Category: "clothing", Decision: "BYE", DaysAgo: 12},
+		{ItemName: "Gym Membership", ItemCost: 89.99, Category: "health", Decision: "WAIT", DaysAgo: 8},
+		{ItemName: "Gaming Headset", ItemCost: 129.99, Category: "electronics", Decision: "BUY", DaysAgo: 15},
+	}
+
+	historyDTO := &types.DecisionHistoryDTO{}
+	periodDescription := fmt.Sprintf("last_%d_days", days)
+	historyDTO.FromDomainHistory(userID, pastDecisions, periodDescription)
+
+	return historyDTO, nil
 }
 
-func renderForgotPasswordPage(c *gin.Context) {
-	// TODO: Implement forgot password page rendering using existing templates
-	c.String(200, "Forgot Password Page - TODO: Implement with existing auth templates")
+func generateMockDecisionID() string {
+	return fmt.Sprintf("mock_decision_%d", time.Now().UnixNano())
 }
 
-func renderDashboardPage(c *gin.Context) {
-	// TODO: Implement dashboard page rendering using existing dashboard_page.templ
-	c.String(200, "Dashboard Page - TODO: Implement with existing dashboard templates")
-}
-
-func renderFinanceOverviewPage(c *gin.Context) {
-	// TODO: Implement finance overview page rendering using existing finance_overview_page.templ
-	c.String(200, "Finance Overview Page - TODO: Implement with existing finance templates")
-}
-
-func renderHealthProfilePage(c *gin.Context) {
-	// TODO: Implement health profile page rendering using existing health_profile_page.templ
-	c.String(200, "Health Profile Page - TODO: Implement with existing health templates")
-}
-
-func renderDecisionNewPage(c *gin.Context) {
-	// TODO: Implement new decision page rendering using existing decision_new_page.templ
-	c.String(200, "New Decision Page - TODO: Implement with existing decision templates")
-}
-
-func renderDecisionHistoryPage(c *gin.Context) {
-	// TODO: Implement decision history page rendering using existing decision_history_page.templ
-	c.String(200, "Decision History Page - TODO: Implement with existing decision templates")
-}
-
-// Partial handlers - return HTML fragments for HTMX
-
-func renderDashboardStatsPartial(c *gin.Context) {
-	// TODO: Implement dashboard stats partial using existing dashboard_stats_partial.templ
-	c.String(200, "Dashboard Stats Partial - TODO: Implement with existing partial templates")
-}
-
-func renderQuickDecisionPartial(c *gin.Context) {
-	// TODO: Implement quick decision partial using existing quick_decision_partial.templ
-	c.String(200, "Quick Decision Partial - TODO: Implement with existing partial templates")
-}
-
-func renderRecentDecisionsPartial(c *gin.Context) {
-	// TODO: Implement recent decisions partial using existing recent_decisions_partial.templ
-	c.String(200, "Recent Decisions Partial - TODO: Implement with existing partial templates")
-}
-
-func renderDashboardContentPartial(c *gin.Context) {
-	// TODO: Implement dashboard content partial (main dashboard body without layout)
-	c.String(200, "Dashboard Content Partial - TODO: Implement")
-}
-
-func renderDashboardBelowFoldPartial(c *gin.Context) {
-	// TODO: Implement dashboard below fold content (lazy loaded sections)
-	c.String(200, "Dashboard Below Fold Partial - TODO: Implement")
-}
-
-func renderDashboardInsightsPartial(c *gin.Context) {
-	// TODO: Implement dashboard insights partial (performance metrics)
-	c.String(200, "Dashboard Insights Partial - TODO: Implement")
-}
-
-func renderFinanceOverviewPartial(c *gin.Context) {
-	// TODO: Implement finance overview partial using existing finance_summary_partial.templ
-	c.String(200, "Finance Overview Partial - TODO: Implement with existing partial templates")
-}
-
-func renderFinanceSummaryPartial(c *gin.Context) {
-	// TODO: Implement finance summary partial using existing finance_summary_partial.templ
-	c.String(200, "Finance Summary Partial - TODO: Implement with existing partial templates")
-}
-
-func renderIncomeListPartial(c *gin.Context) {
-	// TODO: Implement income list partial using existing income_list_partial.templ
-	c.String(200, "Income List Partial - TODO: Implement with existing partial templates")
-}
-
-func renderExpenseFormPartial(c *gin.Context) {
-	// TODO: Implement expense form partial using existing expense_form_partial.templ
-	c.String(200, "Expense Form Partial - TODO: Implement with existing partial templates")
-}
-
-func renderHealthProfilePartial(c *gin.Context) {
-	// TODO: Implement health profile partial content
-	c.String(200, "Health Profile Partial - TODO: Implement")
-}
-
-func renderHealthRiskGaugePartial(c *gin.Context) {
-	// TODO: Implement health risk gauge partial using existing health_risk_gauge_partial.templ
-	c.String(200, "Health Risk Gauge Partial - TODO: Implement with existing partial templates")
-}
-
-func renderConditionAddPartial(c *gin.Context) {
-	// TODO: Implement condition add partial using existing condition_add_partial.templ
-	c.String(200, "Condition Add Partial - TODO: Implement with existing partial templates")
-}
-
-func renderInsuranceCardPartial(c *gin.Context) {
-	// TODO: Implement insurance card partial using existing insurance_card_partial.templ
-	c.String(200, "Insurance Card Partial - TODO: Implement with existing partial templates")
-}
-
-func renderDecisionResultPartial(c *gin.Context) {
-	// TODO: Implement decision result partial using existing decision_result_partial.templ
-	c.String(200, "Decision Result Partial - TODO: Implement with existing partial templates")
-}
-
-func renderDecisionFilterPartial(c *gin.Context) {
-	// TODO: Implement decision filter partial using existing decision_filter_partial.templ
-	c.String(200, "Decision Filter Partial - TODO: Implement with existing partial templates")
+func getWaitPeriod(decision string) int {
+	switch decision {
+	case "WAIT":
+		return 30
+	case "BYE":
+		return 90
+	default:
+		return 0
+	}
 }

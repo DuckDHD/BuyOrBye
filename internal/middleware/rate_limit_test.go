@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/DuckDHD/BuyOrBye/internal/dtos"
+	"github.com/DuckDHD/BuyOrBye/internal/types"
 )
 
 func setupRateLimitTestRouter(rateLimiter *InMemoryRateLimiter) *gin.Engine {
@@ -139,7 +139,7 @@ func TestInMemoryRateLimiter_ExceedsLimit_ReturnsRateLimitError(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusTooManyRequests, w.Code)
 	
-	var response dtos.ErrorResponseDTO
+	var response types.ErrorResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	

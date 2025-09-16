@@ -1,0 +1,61 @@
+package shared
+
+import "fmt"
+
+// formatCurrency formats a float64 as currency
+func formatCurrency(amount float64) string {
+	return fmt.Sprintf("$%.2f", amount)
+}
+
+// getDecisionBorderColor returns border color class based on decision
+func getDecisionBorderColor(decision string) string {
+	switch decision {
+	case "BUY":
+		return "border-green-500 dark:border-green-400"
+	case "WAIT":
+		return "border-amber-500 dark:border-amber-400"
+	case "BYE":
+		return "border-red-500 dark:border-red-400"
+	default:
+		return "border-gray-300 dark:border-gray-600"
+	}
+}
+
+// getDecisionBadgeClass returns badge class based on decision
+func getDecisionBadgeClass(decision string) string {
+	switch decision {
+	case "BUY":
+		return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+	case "WAIT":
+		return "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+	case "BYE":
+		return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+	default:
+		return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+	}
+}
+
+// getConfidenceBarColor returns progress bar color based on confidence level
+func getConfidenceBarColor(confidence float64) string {
+	if confidence >= 0.8 {
+		return "bg-green-500"
+	} else if confidence >= 0.6 {
+		return "bg-amber-500"
+	} else {
+		return "bg-red-500"
+	}
+}
+
+// getDecisionDotColor returns dot color class based on decision
+func getDecisionDotColor(decision string) string {
+	switch decision {
+	case "BUY":
+		return "bg-green-500"
+	case "WAIT":
+		return "bg-amber-500"
+	case "BYE":
+		return "bg-red-500"
+	default:
+		return "bg-gray-400"
+	}
+}

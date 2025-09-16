@@ -5,46 +5,62 @@ FROM --platform=$BUILDPLATFORM golang:1.24.4-alpine AS build
 ARG TARGETOS
 ARG TARGETARCH
 
-# ⬅️ Add libstdc++ and libgcc here
-RUN apk add --no-cache curl ca-certificates libstdc++ libgcc && update-ca-certificates
+# Node.js + npm for Tailwind build
+RUN apk add --no-cache curl ca-certificates libstdc++ libgcc nodejs npm && update-ca-certificates
+
 WORKDIR /app
 
+# ---------------- Go deps ----------------
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go mod download
 
+# ---------------- App source ----------------
 COPY . .
 COPY ./configs ./
 
+# ---------------- templ ----------------
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go install github.com/a-h/templ/cmd/templ@latest
-
 RUN templ generate
 
-# Choose correct Tailwind binary for musl + arch
-RUN set -eux; \
-    case "$TARGETARCH" in \
-      amd64) TW_ARCH="x64-musl" ;; \
-      arm64) TW_ARCH="arm64-musl" ;; \
-      *) echo "Unsupported TARGETARCH: $TARGETARCH" >&2; exit 1 ;; \
-    esac; \
-    curl -fsSL "https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-${TW_ARCH}" \
-      -o /usr/local/bin/tailwindcss; \
-    chmod +x /usr/local/bin/tailwindcss; \
-    tailwindcss -i cmd/web/styles/input.css -o cmd/web/assets/css/output.css
+# ---------------- Frontend (Tailwind) ----------------
+# Install deps declared in cmd/web/package.json (plugins like @tailwindcss/forms resolve here)
+RUN --mount=type=cache,target=/root/.npm npm ci --prefix cmd/web
 
+# Optional: quiet Browserslist warning in CI (safe to skip)
+# RUN npx --yes --prefix cmd/web update-browserslist-db@latest
+
+# Build CSS using local tailwind + config
+RUN npx --prefix cmd/web tailwindcss \
+  -c cmd/web/tailwind.config.js \
+  -i cmd/web/src/css/input.css \
+  -o cmd/web/assets/css/output.css
+
+# ---------------- Backend build ----------------
 ENV CGO_ENABLED=0
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    go build -o /app/main ./cmd/api/main.go
+    go build -o /app/main ./cmd/app/main.go
 
+
+# ================= Production image =================
 FROM alpine:3.20.1 AS prod
 WORKDIR /app
+
+# Binary
 COPY --from=build /app/main /app/main
-# Copy the configs directory to the expected location
+
+# Configs
 COPY --from=build /app/configs /app/configs
-# COPY --from=build /app/cmd/web/assets /app/cmd/web/assets   # if you serve assets from disk
+
+# Frontend assets needed at runtime
+# - assets: built CSS/JS (your server can reference them directly)
+# - static: served by router.Static("/static", "cmd/web/static")
+COPY --from=build /app/cmd/web/assets  /app/cmd/web/assets
+COPY --from=build /app/cmd/web/static  /app/cmd/web/static
+
 ENV PORT=8080
 EXPOSE 8080
 CMD ["/app/main"]

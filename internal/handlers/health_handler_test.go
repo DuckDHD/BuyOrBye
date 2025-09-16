@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
-	"github.com/DuckDHD/BuyOrBye/internal/dtos"
+	"github.com/DuckDHD/BuyOrBye/internal/types"
 )
 
 // MockHealthService for testing
@@ -155,7 +155,7 @@ func TestCreateProfile_Success(t *testing.T) {
 	handler := NewHealthHandler(mockService)
 	router := setupHealthTestRouter(handler)
 	
-	profileDTO := dtos.CreateHealthProfileRequestDTO{
+	profileDTO := types.CreateHealthProfileRequestDTO{
 		UserID:               "user123",
 		Age:                  30,
 		Gender:               "male",
@@ -190,7 +190,7 @@ func TestCreateProfile_DuplicateUser(t *testing.T) {
 	handler := NewHealthHandler(mockService)
 	router := setupHealthTestRouter(handler)
 	
-	profileDTO := dtos.CreateHealthProfileRequestDTO{
+	profileDTO := types.CreateHealthProfileRequestDTO{
 		UserID:               "user123",
 		Age:                  30,
 		Gender:               "male",
@@ -251,7 +251,7 @@ func TestGetProfile_Success(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusOK, w.Code)
 	
-	var responseDTO dtos.HealthProfileResponseDTO
+	var responseDTO types.HealthProfileResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &responseDTO)
 	assert.NoError(t, err)
 	assert.Equal(t, "user123", responseDTO.UserID)
@@ -267,7 +267,7 @@ func TestAddCondition_ValidationError(t *testing.T) {
 	router := setupHealthTestRouter(handler)
 	
 	// Invalid condition DTO - missing required fields
-	conditionDTO := dtos.CreateMedicalConditionRequestDTO{
+	conditionDTO := types.CreateMedicalConditionRequestDTO{
 		Name: "", // Empty name should trigger validation error
 		// Missing other required fields
 	}
@@ -299,7 +299,7 @@ func TestAddExpense_RequiresAuth(t *testing.T) {
 	handler := NewHealthHandler(mockService)
 	router := setupHealthTestRouter(handler)
 	
-	expenseDTO := dtos.CreateMedicalExpenseRequestDTO{
+	expenseDTO := types.CreateMedicalExpenseRequestDTO{
 		UserID:           "user123",
 		ProfileID:        "profile123",
 		Amount:           100.0,
@@ -363,7 +363,7 @@ func TestGetHealthSummary_Success(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusOK, w.Code)
 	
-	var responseDTO dtos.HealthSummaryResponseDTO
+	var responseDTO types.HealthSummaryResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &responseDTO)
 	assert.NoError(t, err)
 	assert.Equal(t, "user123", responseDTO.UserID)
@@ -379,7 +379,7 @@ func TestAddInsurancePolicy_UniqueNumber(t *testing.T) {
 	handler := NewHealthHandler(mockService)
 	router := setupHealthTestRouter(handler)
 	
-	policyDTO := dtos.CreateInsurancePolicyRequestDTO{
+	policyDTO := types.CreateInsurancePolicyRequestDTO{
 		UserID:             "user123",
 		PolicyNumber:       "POL123456",
 		Provider:           "HealthCorp",
@@ -423,7 +423,7 @@ func TestUpdateDeductible_OnlyOwner(t *testing.T) {
 	handler := NewHealthHandler(mockService)
 	router := setupHealthTestRouter(handler)
 	
-	deductibleDTO := dtos.UpdateDeductibleRequestDTO{
+	deductibleDTO := types.UpdateDeductibleRequestDTO{
 		Amount: 500.0,
 	}
 	
@@ -458,7 +458,7 @@ func TestCreateProfile_Unauthorized(t *testing.T) {
 	handler := NewHealthHandler(mockService)
 	router := setupHealthTestRouter(handler)
 	
-	profileDTO := dtos.CreateHealthProfileRequestDTO{
+	profileDTO := types.CreateHealthProfileRequestDTO{
 		UserID:               "user123",
 		Age:                  30,
 		Gender:               "male",
@@ -518,7 +518,7 @@ func TestUpdateProfile_Success(t *testing.T) {
 		UpdatedAt:            time.Now(),
 	}
 	
-	updateDTO := dtos.UpdateHealthProfileRequestDTO{
+	updateDTO := types.UpdateHealthProfileRequestDTO{
 		Age:                  35,
 		Weight:               75.0,
 		FamilySize:           3, // Add required field
@@ -569,7 +569,7 @@ func TestGetConditions_Success(t *testing.T) {
 	
 	assert.Equal(t, http.StatusOK, w.Code)
 	
-	var response dtos.MedicalConditionListResponseDTO
+	var response types.MedicalConditionListResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, response.Total)
@@ -603,7 +603,7 @@ func TestGetExpenses_Success(t *testing.T) {
 	
 	assert.Equal(t, http.StatusOK, w.Code)
 	
-	var response dtos.MedicalExpenseListResponseDTO
+	var response types.MedicalExpenseListResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, response.Total)
@@ -637,7 +637,7 @@ func TestGetActivePolicies_Success(t *testing.T) {
 	
 	assert.Equal(t, http.StatusOK, w.Code)
 	
-	var response dtos.InsurancePolicyListResponseDTO
+	var response types.InsurancePolicyListResponseDTO
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, response.Total)

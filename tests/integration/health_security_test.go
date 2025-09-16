@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/DuckDHD/BuyOrBye/internal/database"
-	"github.com/DuckDHD/BuyOrBye/internal/dtos"
+	"github.com/DuckDHD/BuyOrBye/internal/types"
 	"github.com/DuckDHD/BuyOrBye/internal/handlers"
 	"github.com/DuckDHD/BuyOrBye/internal/models"
 	"github.com/DuckDHD/BuyOrBye/internal/repositories"
@@ -41,23 +41,23 @@ func TestHealthSecurity_UnauthorizedAccess_Blocked(t *testing.T) {
 		path   string
 		body   interface{}
 	}{
-		{"POST", "/api/health/profiles", dtos.HealthProfileRequestDTO{UserID: uuid.New(), Age: 30, Gender: "male", Height: 180.0, Weight: 75.0}},
+		{"POST", "/api/health/profiles", types.HealthProfileRequestDTO{UserID: uuid.New(), Age: 30, Gender: "male", Height: 180.0, Weight: 75.0}},
 		{"GET", "/api/health/profiles/123", nil},
-		{"PUT", "/api/health/profiles/123", dtos.HealthProfileRequestDTO{UserID: uuid.New(), Age: 31, Gender: "male", Height: 180.0, Weight: 75.0}},
+		{"PUT", "/api/health/profiles/123", types.HealthProfileRequestDTO{UserID: uuid.New(), Age: 31, Gender: "male", Height: 180.0, Weight: 75.0}},
 		{"DELETE", "/api/health/profiles/123", nil},
 		{"GET", "/api/health/profiles/123/summary", nil},
 		{"GET", "/api/health/profiles/123/risk", nil},
-		{"POST", "/api/health/conditions", dtos.MedicalConditionRequestDTO{ProfileID: uuid.New(), Name: "Test", Severity: "mild", DiagnosedAt: time.Now(), Status: "active"}},
+		{"POST", "/api/health/conditions", types.MedicalConditionRequestDTO{ProfileID: uuid.New(), Name: "Test", Severity: "mild", DiagnosedAt: time.Now(), Status: "active"}},
 		{"GET", "/api/health/conditions/123", nil},
-		{"PUT", "/api/health/conditions/123", dtos.MedicalConditionRequestDTO{ProfileID: uuid.New(), Name: "Updated", Severity: "moderate", DiagnosedAt: time.Now(), Status: "active"}},
+		{"PUT", "/api/health/conditions/123", types.MedicalConditionRequestDTO{ProfileID: uuid.New(), Name: "Updated", Severity: "moderate", DiagnosedAt: time.Now(), Status: "active"}},
 		{"DELETE", "/api/health/conditions/123", nil},
-		{"POST", "/api/health/policies", dtos.InsurancePolicyRequestDTO{ProfileID: uuid.New(), Provider: "Test", PolicyNumber: "123", CoverageType: "basic", CoverageAmount: 100000.0, Deductible: 1000.0, MonthlyPremium: 200.0, StartDate: time.Now(), EndDate: time.Now().AddDate(1, 0, 0), Status: "active"}},
+		{"POST", "/api/health/policies", types.InsurancePolicyRequestDTO{ProfileID: uuid.New(), Provider: "Test", PolicyNumber: "123", CoverageType: "basic", CoverageAmount: 100000.0, Deductible: 1000.0, MonthlyPremium: 200.0, StartDate: time.Now(), EndDate: time.Now().AddDate(1, 0, 0), Status: "active"}},
 		{"GET", "/api/health/policies/123", nil},
-		{"PUT", "/api/health/policies/123", dtos.InsurancePolicyRequestDTO{ProfileID: uuid.New(), Provider: "Updated", PolicyNumber: "456", CoverageType: "premium", CoverageAmount: 200000.0, Deductible: 2000.0, MonthlyPremium: 400.0, StartDate: time.Now(), EndDate: time.Now().AddDate(1, 0, 0), Status: "active"}},
+		{"PUT", "/api/health/policies/123", types.InsurancePolicyRequestDTO{ProfileID: uuid.New(), Provider: "Updated", PolicyNumber: "456", CoverageType: "premium", CoverageAmount: 200000.0, Deductible: 2000.0, MonthlyPremium: 400.0, StartDate: time.Now(), EndDate: time.Now().AddDate(1, 0, 0), Status: "active"}},
 		{"DELETE", "/api/health/policies/123", nil},
-		{"POST", "/api/health/expenses", dtos.MedicalExpenseRequestDTO{ProfileID: uuid.New(), Description: "Test", Amount: 100.0, ExpenseType: "consultation", ExpenseDate: time.Now(), Provider: "Test", Status: "pending"}},
+		{"POST", "/api/health/expenses", types.MedicalExpenseRequestDTO{ProfileID: uuid.New(), Description: "Test", Amount: 100.0, ExpenseType: "consultation", ExpenseDate: time.Now(), Provider: "Test", Status: "pending"}},
 		{"GET", "/api/health/expenses/123", nil},
-		{"PUT", "/api/health/expenses/123", dtos.MedicalExpenseRequestDTO{ProfileID: uuid.New(), Description: "Updated", Amount: 200.0, ExpenseType: "medication", ExpenseDate: time.Now(), Provider: "Updated", Status: "approved"}},
+		{"PUT", "/api/health/expenses/123", types.MedicalExpenseRequestDTO{ProfileID: uuid.New(), Description: "Updated", Amount: 200.0, ExpenseType: "medication", ExpenseDate: time.Now(), Provider: "Updated", Status: "approved"}},
 		{"DELETE", "/api/health/expenses/123", nil},
 	}
 
@@ -98,7 +98,7 @@ func TestHealthSecurity_CrossUserDataAccess_Prevented(t *testing.T) {
 	user2ID := uuid.New()
 
 	// Create profile for user1
-	profileReq1 := dtos.HealthProfileRequestDTO{
+	profileReq1 := types.HealthProfileRequestDTO{
 		UserID: user1ID,
 		Age:    30,
 		Gender: "male",
@@ -116,7 +116,7 @@ func TestHealthSecurity_CrossUserDataAccess_Prevented(t *testing.T) {
 	require.Equal(t, http.StatusCreated, w1.Code)
 
 	// Create profile for user2
-	profileReq2 := dtos.HealthProfileRequestDTO{
+	profileReq2 := types.HealthProfileRequestDTO{
 		UserID: user2ID,
 		Age:    25,
 		Gender: "female",
@@ -133,12 +133,12 @@ func TestHealthSecurity_CrossUserDataAccess_Prevented(t *testing.T) {
 
 	require.Equal(t, http.StatusCreated, w2.Code)
 
-	var profileResp1 dtos.HealthProfileResponseDTO
+	var profileResp1 types.HealthProfileResponseDTO
 	json.Unmarshal(w1.Body.Bytes(), &profileResp1)
 	profile1ID := profileResp1.ID
 
 	// Add condition to user1's profile
-	conditionReq := dtos.MedicalConditionRequestDTO{
+	conditionReq := types.MedicalConditionRequestDTO{
 		ProfileID:   profile1ID,
 		Name:        "Test Condition",
 		Severity:    "mild",
@@ -194,7 +194,7 @@ func TestHealthSecurity_InputValidation_SQLInjection(t *testing.T) {
 	for _, payload := range sqlInjectionPayloads {
 		t.Run(fmt.Sprintf("SQLInjection_%s", payload[:min(10, len(payload))]), func(t *testing.T) {
 			// Test in profile creation
-			profileReq := dtos.HealthProfileRequestDTO{
+			profileReq := types.HealthProfileRequestDTO{
 				UserID: userID,
 				Age:    30,
 				Gender: payload, // Inject malicious payload
@@ -232,7 +232,7 @@ func TestHealthSecurity_RateLimiting_Applied(t *testing.T) {
 	userID := uuid.New()
 
 	// Test rate limiting on profile creation endpoint
-	profileReq := dtos.HealthProfileRequestDTO{
+	profileReq := types.HealthProfileRequestDTO{
 		UserID: userID,
 		Age:    30,
 		Gender: "male",
@@ -274,7 +274,7 @@ func TestHealthSecurity_SensitiveDataFiltering_ErrorMessages(t *testing.T) {
 	userID := uuid.New()
 
 	// Create a profile with sensitive information
-	profileReq := dtos.HealthProfileRequestDTO{
+	profileReq := types.HealthProfileRequestDTO{
 		UserID: userID,
 		Age:    35,
 		Gender: "male",
@@ -324,7 +324,7 @@ func TestHealthSecurity_AuditTrail_SoftDeletes(t *testing.T) {
 	userID := uuid.New()
 
 	// Create profile
-	profileReq := dtos.HealthProfileRequestDTO{
+	profileReq := types.HealthProfileRequestDTO{
 		UserID: userID,
 		Age:    30,
 		Gender: "male",
@@ -341,12 +341,12 @@ func TestHealthSecurity_AuditTrail_SoftDeletes(t *testing.T) {
 
 	require.Equal(t, http.StatusCreated, w1.Code)
 
-	var profileResp dtos.HealthProfileResponseDTO
+	var profileResp types.HealthProfileResponseDTO
 	json.Unmarshal(w1.Body.Bytes(), &profileResp)
 	profileID := profileResp.ID
 
 	// Add a condition
-	conditionReq := dtos.MedicalConditionRequestDTO{
+	conditionReq := types.MedicalConditionRequestDTO{
 		ProfileID:   profileID,
 		Name:        "Test Condition",
 		Severity:    "mild",
@@ -363,7 +363,7 @@ func TestHealthSecurity_AuditTrail_SoftDeletes(t *testing.T) {
 
 	require.Equal(t, http.StatusCreated, w2.Code)
 
-	var conditionResp dtos.MedicalConditionResponseDTO
+	var conditionResp types.MedicalConditionResponseDTO
 	json.Unmarshal(w2.Body.Bytes(), &conditionResp)
 	conditionID := conditionResp.ID
 
@@ -389,7 +389,7 @@ func TestHealthSecurity_AuditTrail_SoftDeletes(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w4.Code)
 
-	var conditions []dtos.MedicalConditionResponseDTO
+	var conditions []types.MedicalConditionResponseDTO
 	json.Unmarshal(w4.Body.Bytes(), &conditions)
 	assert.Empty(t, conditions, "Soft deleted conditions should not appear in normal queries")
 }

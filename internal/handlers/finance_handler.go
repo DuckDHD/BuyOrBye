@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 
@@ -9,21 +8,21 @@ import (
 	"github.com/go-playground/validator/v10"
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
-	"github.com/DuckDHD/BuyOrBye/internal/dtos"
 	"github.com/DuckDHD/BuyOrBye/internal/middleware"
+	"github.com/DuckDHD/BuyOrBye/internal/services"
+	"github.com/DuckDHD/BuyOrBye/internal/types"
 )
 
-// FinanceService interface is consumed by this handler and defined in this package
-// Following the consumer-defined interface principle from CLAUDE.md
+// FinanceService interface from services package - handlers act as DTO-domain adapters
 
 // FinanceHandler handles HTTP requests for finance endpoints
 type FinanceHandler struct {
-	financeService FinanceServiceInterface
+	financeService services.FinanceService
 	validator      *validator.Validate
 }
 
 // NewFinanceHandler creates a new finance handler with dependency injection
-func NewFinanceHandler(financeService FinanceServiceInterface) *FinanceHandler {
+func NewFinanceHandler(financeService services.FinanceService) *FinanceHandler {
 	return &FinanceHandler{
 		financeService: financeService,
 		validator:      validator.New(),
@@ -35,11 +34,11 @@ func NewFinanceHandler(financeService FinanceServiceInterface) *FinanceHandler {
 // AddIncome handles POST /api/finance/income requests
 // Adds a new income source for the authenticated user
 func (h *FinanceHandler) AddIncome(c *gin.Context) {
-	var request dtos.AddIncomeDTO
+	var request types.AddIncomeDTO
 
 	// Parse and bind JSON request
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid JSON format",
@@ -50,7 +49,7 @@ func (h *FinanceHandler) AddIncome(c *gin.Context) {
 	// Validate request fields
 	if err := h.validator.Struct(&request); err != nil {
 		validationErrors := h.buildValidationErrors(err)
-		c.JSON(http.StatusBadRequest, dtos.NewValidationErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewValidationErrorResponse(
 			"Validation failed",
 			validationErrors,
 		))
@@ -60,7 +59,7 @@ func (h *FinanceHandler) AddIncome(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -68,10 +67,10 @@ func (h *FinanceHandler) AddIncome(c *gin.Context) {
 		return
 	}
 
-	// Convert DTO to domain struct
+	// Transform DTO to domain object
 	income := request.ToDomain(userID)
 
-	// Call service layer
+	// Call service layer with domain object
 	if err := h.financeService.AddIncome(c.Request.Context(), income); err != nil {
 		h.handleFinanceError(c, err)
 		return
@@ -88,7 +87,7 @@ func (h *FinanceHandler) GetIncomes(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -103,12 +102,10 @@ func (h *FinanceHandler) GetIncomes(c *gin.Context) {
 		return
 	}
 
-	// Convert domain structs to DTOs
-	var response []dtos.IncomeResponseDTO
-	for _, income := range incomes {
-		var dto dtos.IncomeResponseDTO
-		dto.FromDomain(income)
-		response = append(response, dto)
+	// Convert domain objects to DTOs
+	response := &types.IncomeListResponseDTO{
+		Incomes: types.FromDomainIncomeList(incomes),
+		Total:   len(incomes),
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -117,12 +114,12 @@ func (h *FinanceHandler) GetIncomes(c *gin.Context) {
 // UpdateIncome handles PUT /api/finance/income/:id requests
 // Updates an existing income record for the authenticated user
 func (h *FinanceHandler) UpdateIncome(c *gin.Context) {
-	var request dtos.UpdateIncomeDTO
+	var request types.UpdateIncomeDTO
 	incomeID := c.Param("id")
 
 	// Parse and bind JSON request
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid JSON format",
@@ -133,7 +130,7 @@ func (h *FinanceHandler) UpdateIncome(c *gin.Context) {
 	// Validate request fields
 	if err := h.validator.Struct(&request); err != nil {
 		validationErrors := h.buildValidationErrors(err)
-		c.JSON(http.StatusBadRequest, dtos.NewValidationErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewValidationErrorResponse(
 			"Validation failed",
 			validationErrors,
 		))
@@ -143,7 +140,7 @@ func (h *FinanceHandler) UpdateIncome(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -151,38 +148,38 @@ func (h *FinanceHandler) UpdateIncome(c *gin.Context) {
 		return
 	}
 
-	// Get existing income first to apply partial updates
-	existingIncomes, err := h.financeService.GetUserIncomes(c.Request.Context(), userID)
+	// First get the existing income to update
+	existingIncome, err := h.financeService.GetIncomeByID(c.Request.Context(), incomeID)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, types.NewErrorResponse(
+				http.StatusNotFound,
+				"not_found",
+				"Income record not found",
+			))
+			return
+		}
 		h.handleFinanceError(c, err)
 		return
 	}
 
-	// Find the income to update
-	var income *domain.Income
-	for _, inc := range existingIncomes {
-		if inc.ID == incomeID && inc.UserID == userID {
-			income = &inc
-			break
-		}
-	}
-
-	if income == nil {
-		c.JSON(http.StatusNotFound, dtos.NewErrorResponse(
-			http.StatusNotFound,
-			"not_found",
-			"Income not found or access denied",
+	// Verify ownership
+	if existingIncome.UserID != userID {
+		c.JSON(http.StatusForbidden, types.NewErrorResponse(
+			http.StatusForbidden,
+			"forbidden",
+			"Access denied: You can only update your own income records",
 		))
 		return
 	}
 
-	// Apply updates
-	request.ApplyUpdates(income)
+	// Apply updates to the existing income
+	request.ApplyUpdates(&existingIncome)
 
-	// Call service layer
-	if err := h.financeService.UpdateIncome(c.Request.Context(), *income); err != nil {
+	// Call service layer with updated domain object
+	if err := h.financeService.UpdateIncome(c.Request.Context(), existingIncome); err != nil {
 		if strings.Contains(err.Error(), "does not belong to user") {
-			c.JSON(http.StatusForbidden, dtos.NewErrorResponse(
+			c.JSON(http.StatusForbidden, types.NewErrorResponse(
 				http.StatusForbidden,
 				"forbidden",
 				"Access denied: You can only update your own income records",
@@ -190,7 +187,7 @@ func (h *FinanceHandler) UpdateIncome(c *gin.Context) {
 			return
 		}
 		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, dtos.NewErrorResponse(
+			c.JSON(http.StatusNotFound, types.NewErrorResponse(
 				http.StatusNotFound,
 				"not_found",
 				"Income record not found",
@@ -214,7 +211,7 @@ func (h *FinanceHandler) DeleteIncome(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -225,7 +222,7 @@ func (h *FinanceHandler) DeleteIncome(c *gin.Context) {
 	// Call service layer
 	if err := h.financeService.DeleteIncome(c.Request.Context(), userID, incomeID); err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, dtos.NewErrorResponse(
+			c.JSON(http.StatusNotFound, types.NewErrorResponse(
 				http.StatusNotFound,
 				"not_found",
 				"Income record not found",
@@ -246,12 +243,12 @@ func (h *FinanceHandler) DeleteIncome(c *gin.Context) {
 // AddExpense handles POST /api/finance/expense requests
 // Adds a new expense for the authenticated user
 func (h *FinanceHandler) AddExpense(c *gin.Context) {
-	var request dtos.AddExpenseDTO
+	var request types.AddExpenseDTO
 
 	// Extract user ID from authentication context first for auth check
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -261,7 +258,7 @@ func (h *FinanceHandler) AddExpense(c *gin.Context) {
 
 	// Parse and bind JSON request
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid JSON format",
@@ -272,17 +269,17 @@ func (h *FinanceHandler) AddExpense(c *gin.Context) {
 	// Validate request fields
 	if err := h.validator.Struct(&request); err != nil {
 		validationErrors := h.buildValidationErrors(err)
-		c.JSON(http.StatusBadRequest, dtos.NewValidationErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewValidationErrorResponse(
 			"Validation failed",
 			validationErrors,
 		))
 		return
 	}
 
-	// Convert DTO to domain struct
+	// Transform DTO to domain object
 	expense := request.ToDomain(userID)
 
-	// Call service layer
+	// Call service layer with domain object
 	if err := h.financeService.AddExpense(c.Request.Context(), expense); err != nil {
 		h.handleFinanceError(c, err)
 		return
@@ -299,7 +296,7 @@ func (h *FinanceHandler) GetExpenses(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -325,12 +322,10 @@ func (h *FinanceHandler) GetExpenses(c *gin.Context) {
 		return
 	}
 
-	// Convert domain structs to DTOs
-	var response []dtos.ExpenseResponseDTO
-	for _, expense := range expenses {
-		var dto dtos.ExpenseResponseDTO
-		dto.FromDomain(expense)
-		response = append(response, dto)
+	// Convert domain objects to DTOs
+	response := &types.ExpenseListResponseDTO{
+		Expenses: types.FromDomainExpenseList(expenses),
+		Total:    len(expenses),
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -339,12 +334,12 @@ func (h *FinanceHandler) GetExpenses(c *gin.Context) {
 // UpdateExpense handles PUT /api/finance/expense/:id requests
 // Updates an existing expense record for the authenticated user
 func (h *FinanceHandler) UpdateExpense(c *gin.Context) {
-	var request dtos.UpdateExpenseDTO
+	var request types.UpdateExpenseDTO
 	expenseID := c.Param("id")
 
 	// Parse and bind JSON request
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid JSON format",
@@ -355,7 +350,7 @@ func (h *FinanceHandler) UpdateExpense(c *gin.Context) {
 	// Validate request fields
 	if err := h.validator.Struct(&request); err != nil {
 		validationErrors := h.buildValidationErrors(err)
-		c.JSON(http.StatusBadRequest, dtos.NewValidationErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewValidationErrorResponse(
 			"Validation failed",
 			validationErrors,
 		))
@@ -365,7 +360,7 @@ func (h *FinanceHandler) UpdateExpense(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -373,41 +368,49 @@ func (h *FinanceHandler) UpdateExpense(c *gin.Context) {
 		return
 	}
 
-	// Get existing expenses to find the one to update
-	expenses, err := h.financeService.GetUserExpenses(c.Request.Context(), userID)
+	// First get the existing expense to update
+	existingExpense, err := h.financeService.GetExpenseByID(c.Request.Context(), expenseID)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, types.NewErrorResponse(
+				http.StatusNotFound,
+				"not_found",
+				"Expense record not found",
+			))
+			return
+		}
 		h.handleFinanceError(c, err)
 		return
 	}
 
-	// Find the expense to update
-	var expense *domain.Expense
-	for _, exp := range expenses {
-		if exp.ID == expenseID && exp.UserID == userID {
-			expense = &exp
-			break
-		}
-	}
-
-	if expense == nil {
-		c.JSON(http.StatusNotFound, dtos.NewErrorResponse(
-			http.StatusNotFound,
-			"not_found",
-			"Expense not found or access denied",
+	// Verify ownership
+	if existingExpense.UserID != userID {
+		c.JSON(http.StatusForbidden, types.NewErrorResponse(
+			http.StatusForbidden,
+			"forbidden",
+			"Access denied: You can only update your own expense records",
 		))
 		return
 	}
 
-	// Apply updates
-	request.ApplyUpdates(expense)
+	// Apply updates to the existing expense
+	request.ApplyUpdates(&existingExpense)
 
-	// Call service layer
-	if err := h.financeService.UpdateExpense(c.Request.Context(), *expense); err != nil {
+	// Call service layer with updated domain object
+	if err := h.financeService.UpdateExpense(c.Request.Context(), existingExpense); err != nil {
 		if strings.Contains(err.Error(), "does not belong to user") {
-			c.JSON(http.StatusForbidden, dtos.NewErrorResponse(
+			c.JSON(http.StatusForbidden, types.NewErrorResponse(
 				http.StatusForbidden,
 				"forbidden",
 				"Access denied: You can only update your own expense records",
+			))
+			return
+		}
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, types.NewErrorResponse(
+				http.StatusNotFound,
+				"not_found",
+				"Expense not found or access denied",
 			))
 			return
 		}
@@ -428,7 +431,7 @@ func (h *FinanceHandler) DeleteExpense(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -439,7 +442,7 @@ func (h *FinanceHandler) DeleteExpense(c *gin.Context) {
 	// Call service layer
 	if err := h.financeService.DeleteExpense(c.Request.Context(), userID, expenseID); err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, dtos.NewErrorResponse(
+			c.JSON(http.StatusNotFound, types.NewErrorResponse(
 				http.StatusNotFound,
 				"not_found",
 				"Expense record not found",
@@ -460,11 +463,11 @@ func (h *FinanceHandler) DeleteExpense(c *gin.Context) {
 // AddLoan handles POST /api/finance/loan requests
 // Adds a new loan for the authenticated user
 func (h *FinanceHandler) AddLoan(c *gin.Context) {
-	var request dtos.AddLoanDTO
+	var request types.AddLoanDTO
 
 	// Parse and bind JSON request
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid JSON format",
@@ -475,7 +478,7 @@ func (h *FinanceHandler) AddLoan(c *gin.Context) {
 	// Validate request fields
 	if err := h.validator.Struct(&request); err != nil {
 		validationErrors := h.buildValidationErrors(err)
-		c.JSON(http.StatusBadRequest, dtos.NewValidationErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewValidationErrorResponse(
 			"Validation failed",
 			validationErrors,
 		))
@@ -485,7 +488,7 @@ func (h *FinanceHandler) AddLoan(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -493,10 +496,10 @@ func (h *FinanceHandler) AddLoan(c *gin.Context) {
 		return
 	}
 
-	// Convert DTO to domain struct
+	// Transform DTO to domain object
 	loan := request.ToDomain(userID)
 
-	// Call service layer
+	// Call service layer with domain object
 	if err := h.financeService.AddLoan(c.Request.Context(), loan); err != nil {
 		h.handleFinanceError(c, err)
 		return
@@ -513,7 +516,7 @@ func (h *FinanceHandler) GetLoans(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -528,12 +531,10 @@ func (h *FinanceHandler) GetLoans(c *gin.Context) {
 		return
 	}
 
-	// Convert domain structs to DTOs
-	var response []dtos.LoanResponseDTO
-	for _, loan := range loans {
-		var dto dtos.LoanResponseDTO
-		dto.FromDomain(loan)
-		response = append(response, dto)
+	// Convert domain objects to DTOs
+	response := &types.LoanListResponseDTO{
+		Loans: types.FromDomainLoanList(loans),
+		Total: len(loans),
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -542,12 +543,12 @@ func (h *FinanceHandler) GetLoans(c *gin.Context) {
 // UpdateLoan handles PUT /api/finance/loan/:id requests
 // Updates an existing loan record for the authenticated user
 func (h *FinanceHandler) UpdateLoan(c *gin.Context) {
-	var request dtos.UpdateLoanDTO
+	var request types.UpdateLoanDTO
 	loanID := c.Param("id")
 
 	// Parse and bind JSON request
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid JSON format",
@@ -558,7 +559,7 @@ func (h *FinanceHandler) UpdateLoan(c *gin.Context) {
 	// Validate request fields
 	if err := h.validator.Struct(&request); err != nil {
 		validationErrors := h.buildValidationErrors(err)
-		c.JSON(http.StatusBadRequest, dtos.NewValidationErrorResponse(
+		c.JSON(http.StatusBadRequest, types.NewValidationErrorResponse(
 			"Validation failed",
 			validationErrors,
 		))
@@ -568,7 +569,7 @@ func (h *FinanceHandler) UpdateLoan(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -576,41 +577,49 @@ func (h *FinanceHandler) UpdateLoan(c *gin.Context) {
 		return
 	}
 
-	// Get existing loans to find the one to update
-	loans, err := h.financeService.GetUserLoans(c.Request.Context(), userID)
+	// First get the existing loan to update
+	existingLoan, err := h.financeService.GetLoanByID(c.Request.Context(), loanID)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, types.NewErrorResponse(
+				http.StatusNotFound,
+				"not_found",
+				"Loan record not found",
+			))
+			return
+		}
 		h.handleFinanceError(c, err)
 		return
 	}
 
-	// Find the loan to update
-	var loan *domain.Loan
-	for _, l := range loans {
-		if l.ID == loanID && l.UserID == userID {
-			loan = &l
-			break
-		}
-	}
-
-	if loan == nil {
-		c.JSON(http.StatusNotFound, dtos.NewErrorResponse(
-			http.StatusNotFound,
-			"not_found",
-			"Loan not found or access denied",
+	// Verify ownership
+	if existingLoan.UserID != userID {
+		c.JSON(http.StatusForbidden, types.NewErrorResponse(
+			http.StatusForbidden,
+			"forbidden",
+			"Access denied: You can only update your own loan records",
 		))
 		return
 	}
 
-	// Apply updates
-	request.ApplyUpdates(loan)
+	// Apply updates to the existing loan
+	request.ApplyUpdates(&existingLoan)
 
-	// Call service layer
-	if err := h.financeService.UpdateLoan(c.Request.Context(), *loan); err != nil {
+	// Call service layer with updated domain object
+	if err := h.financeService.UpdateLoan(c.Request.Context(), existingLoan); err != nil {
 		if strings.Contains(err.Error(), "does not belong to user") {
-			c.JSON(http.StatusForbidden, dtos.NewErrorResponse(
+			c.JSON(http.StatusForbidden, types.NewErrorResponse(
 				http.StatusForbidden,
 				"forbidden",
 				"Access denied: You can only update your own loan records",
+			))
+			return
+		}
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, types.NewErrorResponse(
+				http.StatusNotFound,
+				"not_found",
+				"Loan not found or access denied",
 			))
 			return
 		}
@@ -631,7 +640,7 @@ func (h *FinanceHandler) GetFinanceSummary(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -646,9 +655,8 @@ func (h *FinanceHandler) GetFinanceSummary(c *gin.Context) {
 		return
 	}
 
-	// Convert domain struct to DTO
-	var response dtos.FinanceSummaryResponseDTO
-	response.FromDomain(summary)
+	// Convert domain object to DTO
+	response := types.FromDomainFinanceSummary(summary)
 
 	c.JSON(http.StatusOK, response)
 }
@@ -659,7 +667,7 @@ func (h *FinanceHandler) GetAffordability(c *gin.Context) {
 	// Extract user ID from authentication context
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, dtos.NewErrorResponse(
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 			http.StatusUnauthorized,
 			"unauthorized",
 			"Authentication required",
@@ -713,46 +721,47 @@ func (h *FinanceHandler) buildValidationErrors(err error) map[string]interface{}
 
 // handleFinanceError handles finance-specific errors and maps them to appropriate HTTP responses
 func (h *FinanceHandler) handleFinanceError(c *gin.Context, err error) {
+	errMsg := err.Error()
 	switch {
-	case errors.Is(err, domain.ErrIncomeNotFound):
-		c.JSON(http.StatusNotFound, dtos.NewErrorResponse(
+	case strings.Contains(errMsg, "income not found"):
+		c.JSON(http.StatusNotFound, types.NewErrorResponse(
 			http.StatusNotFound,
 			"not_found",
 			"Income record not found",
 		))
-	case errors.Is(err, domain.ErrExpenseNotFound):
-		c.JSON(http.StatusNotFound, dtos.NewErrorResponse(
+	case strings.Contains(errMsg, "expense not found"):
+		c.JSON(http.StatusNotFound, types.NewErrorResponse(
 			http.StatusNotFound,
 			"not_found",
 			"Expense record not found",
 		))
-	case errors.Is(err, domain.ErrLoanNotFound):
-		c.JSON(http.StatusNotFound, dtos.NewErrorResponse(
+	case strings.Contains(errMsg, "loan not found"):
+		c.JSON(http.StatusNotFound, types.NewErrorResponse(
 			http.StatusNotFound,
 			"not_found",
 			"Loan record not found",
 		))
-	case errors.Is(err, domain.ErrFinanceSummaryNotFound):
-		c.JSON(http.StatusNotFound, dtos.NewErrorResponse(
+	case strings.Contains(errMsg, "financial summary not found") || strings.Contains(errMsg, "finance summary not found"):
+		c.JSON(http.StatusNotFound, types.NewErrorResponse(
 			http.StatusNotFound,
 			"not_found",
 			"Financial summary not found",
 		))
-	case errors.Is(err, domain.ErrUnauthorizedAccess):
-		c.JSON(http.StatusForbidden, dtos.NewErrorResponse(
+	case strings.Contains(errMsg, "unauthorized access") || strings.Contains(errMsg, "access denied"):
+		c.JSON(http.StatusForbidden, types.NewErrorResponse(
 			http.StatusForbidden,
 			"forbidden",
 			"Access denied: You can only access your own financial records",
 		))
-	case errors.Is(err, domain.ErrInvalidFinanceData):
-		c.JSON(http.StatusBadRequest, dtos.NewErrorResponse(
+	case strings.Contains(errMsg, "invalid finance data") || strings.Contains(errMsg, "invalid financial data"):
+		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			http.StatusBadRequest,
 			"bad_request",
 			"Invalid financial data provided",
 		))
 	default:
 		// Internal server error for unexpected errors
-		c.JSON(http.StatusInternalServerError, dtos.NewErrorResponse(
+		c.JSON(http.StatusInternalServerError, types.NewErrorResponse(
 			http.StatusInternalServerError,
 			"internal_error",
 			"An internal error occurred. Please try again later",

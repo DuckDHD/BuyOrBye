@@ -410,3 +410,22 @@ func (h *healthService) countHighRiskConditions(conditions []domain.MedicalCondi
 	}
 	return count
 }
+
+// CalculateRisk calculates health risk for a user
+func (h *healthService) CalculateRisk(ctx context.Context, userID string) (interface{}, error) {
+	// Get health summary which contains risk calculations
+	summary, err := h.CalculateHealthSummary(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return risk-related information
+	riskData := map[string]interface{}{
+		"health_risk_score":  summary.HealthRiskScore,
+		"health_risk_level":  summary.HealthRiskLevel,
+		"priority_adjustment": summary.PriorityAdjustment,
+		"financial_vulnerability": summary.FinancialVulnerability,
+	}
+
+	return riskData, nil
+}

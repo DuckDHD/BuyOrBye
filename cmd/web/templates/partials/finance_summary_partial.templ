@@ -1,384 +1,193 @@
 package partials
 
 import (
+	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
 	"fmt"
-	"strings"
 )
 
-templ FinanceSummaryPartial(summary *FinanceSummaryDTO) {
-	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-data="financeSummary()">
-		<!-- Disposable Income Card -->
-		<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border-l-4 border-blue-500">
-			<div class="p-5">
-				<div class="flex items-center">
-					<div class="flex-shrink-0">
-						<div class="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg">
-							<svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-							</svg>
-						</div>
-					</div>
-					<div class="ml-5 w-0 flex-1">
-						<dl>
-							<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-								Disposable Income
-							</dt>
-							<dd class="flex items-baseline">
-								<div 
-									class="text-2xl font-semibold"
-									:class="{ summary.DisposableIncome } >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
-									x-data="{ animatedValue: 0, targetValue: { summary.DisposableIncome } }"
-									x-init="
-										let start = Date.now();
-										const duration = 2000;
-										const update = () => {
-											const elapsed = Date.now() - start;
-											const progress = Math.min(elapsed / duration, 1);
-											const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-											animatedValue = Math.round(targetValue * easeOutQuart);
-											if (progress < 1) requestAnimationFrame(update);
-										};
-										requestAnimationFrame(update);
-									"
-									x-text="formatCurrency(animatedValue)"
-								>
-									$0.00
-								</div>
-								if summary.DisposableIncomeTrend != "" {
-									<div class="ml-2 flex items-baseline text-sm">
-										if getTrendDirection(summary.DisposableIncomeTrend) == "up" {
-											<svg class="self-center flex-shrink-0 h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-												<path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414 6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-											</svg>
-											<span class="text-green-600 dark:text-green-400 font-medium">{ summary.DisposableIncomeTrend }</span>
-										} else if getTrendDirection(summary.DisposableIncomeTrend) == "down" {
-											<svg class="self-center flex-shrink-0 h-4 w-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-												<path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-											</svg>
-											<span class="text-red-600 dark:text-red-400 font-medium">{ summary.DisposableIncomeTrend }</span>
-										} else {
-											<svg class="self-center flex-shrink-0 h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-												<path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
-											</svg>
-											<span class="text-gray-600 dark:text-gray-400 font-medium">{ summary.DisposableIncomeTrend }</span>
-										}
-									</div>
-								}
-							</dd>
-						</dl>
-						<div class="mt-3">
-							<div class="text-xs text-gray-500 dark:text-gray-400">
-								Total Income: <span class="font-medium text-green-600 dark:text-green-400">${ formatCurrency(summary.TotalIncome) }</span>
-								· Expenses: <span class="font-medium text-red-600 dark:text-red-400">${ formatCurrency(summary.TotalExpenses) }</span>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- Debt-to-Income Ratio Gauge -->
-		<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border-l-4 border-purple-500">
-			<div class="p-5">
-				<div class="flex items-center">
-					<div class="flex-shrink-0">
-						<div class="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-lg">
-							<svg class="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-							</svg>
-						</div>
-					</div>
-					<div class="ml-5 w-0 flex-1">
-						<dl>
-							<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-								Debt-to-Income Ratio
-							</dt>
-							<dd class="flex items-baseline">
-								<div 
-									class="text-2xl font-semibold"
-									:class="{ summary.DebtToIncomeRatio } <= 28 ? 'text-green-600 dark:text-green-400' : ({ summary.DebtToIncomeRatio } <= 43 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400')"
-								>
-									{ summary.DebtToIncomeRatio }%
-								</div>
-								<div class="ml-2 text-sm">
-									<span 
-										class="inline-flex px-2 py-1 text-xs font-medium rounded-full"
-										:class="{ summary.DebtToIncomeRatio } <= 28 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : ({ summary.DebtToIncomeRatio } <= 43 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400')"
-									>
-										{ getDebtRatioStatus(summary.DebtToIncomeRatio) }
-									</span>
-								</div>
-							</dd>
-						</dl>
-						
-						<!-- Progress Bar -->
-						<div class="mt-3">
-							<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-								<div 
-									class="h-2 rounded-full transition-all duration-2000 ease-out"
-									:class="{ summary.DebtToIncomeRatio } <= 28 ? 'bg-green-500' : ({ summary.DebtToIncomeRatio } <= 43 ? 'bg-yellow-500' : 'bg-red-500')"
-									x-data="{ width: 0 }"
-									x-init="setTimeout(() => { width = Math.min({ summary.DebtToIncomeRatio }, 100) }, 300)"
-									:style="`width: ${width}%`"
-								></div>
-							</div>
-							<div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-								<span>0%</span>
-								<span class="text-green-600 dark:text-green-400">28%</span>
-								<span class="text-yellow-600 dark:text-yellow-400">43%</span>
-								<span>100%+</span>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- Savings Rate Indicator -->
-		<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border-l-4 border-green-500">
-			<div class="p-5">
-				<div class="flex items-center">
-					<div class="flex-shrink-0">
-						<div class="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
-							<svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-							</svg>
-						</div>
-					</div>
-					<div class="ml-5 w-0 flex-1">
-						<dl>
-							<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-								Savings Rate
-							</dt>
-							<dd class="flex items-baseline">
-								<div 
-									class="text-2xl font-semibold"
-									:class="{ summary.SavingsRate } >= 20 ? 'text-green-600 dark:text-green-400' : ({ summary.SavingsRate } >= 10 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400')"
-									x-data="{ animatedValue: 0, targetValue: { summary.SavingsRate } }"
-									x-init="
-										let start = Date.now();
-										const duration = 1800;
-										const update = () => {
-											const elapsed = Date.now() - start;
-											const progress = Math.min(elapsed / duration, 1);
-											const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-											animatedValue = Math.round(targetValue * easeOutQuart * 10) / 10;
-											if (progress < 1) requestAnimationFrame(update);
-										};
-										requestAnimationFrame(update);
-									"
-									x-text="animatedValue + '%'"
-								>
-									0%
-								</div>
-								<div class="ml-2 text-sm">
-									<span 
-										class="inline-flex px-2 py-1 text-xs font-medium rounded-full"
-										:class="{ summary.SavingsRate } >= 20 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : ({ summary.SavingsRate } >= 10 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400')"
-									>
-										{ getSavingsRateStatus(summary.SavingsRate) }
-									</span>
-								</div>
-							</dd>
-						</dl>
-						
-						<!-- Savings Goal Progress -->
-						<div class="mt-3">
-							<div class="flex items-center justify-between mb-1">
-								<span class="text-xs text-gray-500 dark:text-gray-400">Target: 20%</span>
-								<span class="text-xs font-medium" :class="{ summary.SavingsRate } >= 20 ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'">
-									${ formatCurrency(summary.MonthlySavings) }/month
-								</span>
-							</div>
-							<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-								<div 
-									class="h-2 rounded-full transition-all duration-2000 ease-out"
-									:class="{ summary.SavingsRate } >= 20 ? 'bg-green-500' : ({ summary.SavingsRate } >= 10 ? 'bg-yellow-500' : 'bg-red-500')"
-									x-data="{ width: 0 }"
-									x-init="setTimeout(() => { width = Math.min({ summary.SavingsRate } * 5, 100) }, 500)"
-									:style="`width: ${width}%`"
-								></div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- Financial Health Status -->
-		<div class="lg:col-span-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg p-6 border border-blue-100 dark:border-blue-800">
-			<div class="flex items-center justify-between mb-4">
-				<div class="flex items-center">
-					<div class={ "p-2 rounded-lg mr-3 " + getHealthStatusBgColor(summary.HealthScore) }>
-						<svg class={ "w-6 h-6 " + getHealthStatusIconColor(summary.HealthScore) } fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							if summary.HealthScore >= 80 {
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-							} else if summary.HealthScore >= 60 {
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-							} else {
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-							}
-						</svg>
-					</div>
-					<div>
-						<h3 class="text-lg font-medium text-gray-900 dark:text-white">Financial Health Score</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">{ getHealthStatusMessage(summary.HealthScore) }</p>
-					</div>
-				</div>
-				<div class="text-right">
-					<div class={ "text-3xl font-bold " + getHealthStatusTextColor(summary.HealthScore) }>
-						{ summary.HealthScore }/100
-					</div>
-					<div class="text-sm text-gray-500 dark:text-gray-400">
-						{ getHealthStatusLabel(summary.HealthScore) }
-					</div>
-				</div>
-			</div>
-
-			<!-- Health Score Breakdown -->
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-				<div class="text-center">
-					<div class="text-2xl font-semibold text-blue-600 dark:text-blue-400">
-						{ summary.IncomeStabilityScore }%
-					</div>
-					<div class="text-sm text-gray-600 dark:text-gray-400">Income Stability</div>
-				</div>
-				<div class="text-center">
-					<div class="text-2xl font-semibold text-purple-600 dark:text-purple-400">
-						{ summary.DebtManagementScore }%
-					</div>
-					<div class="text-sm text-gray-600 dark:text-gray-400">Debt Management</div>
-				</div>
-				<div class="text-center">
-					<div class="text-2xl font-semibold text-green-600 dark:text-green-400">
-						{ summary.SavingsScore }%
-					</div>
-					<div class="text-sm text-gray-600 dark:text-gray-400">Savings Goal</div>
-				</div>
-			</div>
-
-			<!-- Recommendations -->
-			if len(summary.Recommendations) > 0 {
-				<div class="mt-6 pt-4 border-t border-blue-200 dark:border-blue-700">
-					<h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Recommendations</h4>
-					<ul class="space-y-2">
-						for _, rec := range summary.Recommendations {
-							<li class="flex items-start">
-								<svg class="w-4 h-4 text-blue-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+templ FinanceSummaryPartial(dto types.FinanceSummaryDTO) {
+	if dto.Error != nil {
+		@components.ErrorBanner(dto.Error.Message)
+	} else {
+		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-data="financeSummary()">
+			<!-- Disposable Income Card -->
+			<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border-l-4 border-blue-500">
+				<div class="p-5">
+					<div class="flex items-center">
+						<div class="flex-shrink-0">
+							<div class="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg">
+								<svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
 								</svg>
-								<span class="text-sm text-gray-700 dark:text-gray-300">{ rec }</span>
-							</li>
-						}
-					</ul>
+							</div>
+						</div>
+						<div class="ml-5 w-0 flex-1">
+							<dl>
+								<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+									Disposable Income
+								</dt>
+								<dd class="flex items-baseline">
+									<div
+										class="text-2xl font-semibold"
+										:class="{ dto.DisposableIncome } >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
+									>
+										${ fmt.Sprintf("%.2f", dto.DisposableIncome) }
+									</div>
+									if dto.DisposableIncomeTrend != "" {
+										<div class="ml-2 flex items-baseline text-sm">
+											<span class="text-gray-600 dark:text-gray-400 font-medium">{ dto.DisposableIncomeTrend }</span>
+										</div>
+									}
+								</dd>
+							</dl>
+							<div class="mt-3">
+								<div class="text-xs text-gray-500 dark:text-gray-400">
+									Total Income: <span class="font-medium text-green-600 dark:text-green-400">${ fmt.Sprintf("%.2f", dto.TotalIncome) }</span>
+									· Expenses: <span class="font-medium text-red-600 dark:text-red-400">${ fmt.Sprintf("%.2f", dto.TotalExpenses) }</span>
+								</div>
+							</div>
+						</div>
+					</div>
 				</div>
-			}
-		</div>
-	</div>
+			</div>
 
-	<script>
-		function financeSummary() {
-			return {
-				formatCurrency(amount) {
-					if (!amount && amount !== 0) return '$0.00';
-					return '$' + Math.abs(amount).toFixed(2);
+			<!-- Debt-to-Income Ratio Gauge -->
+			<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border-l-4 border-purple-500">
+				<div class="p-5">
+					<div class="flex items-center">
+						<div class="flex-shrink-0">
+							<div class="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-lg">
+								<svg class="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+								</svg>
+							</div>
+						</div>
+						<div class="ml-5 w-0 flex-1">
+							<dl>
+								<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+									Debt-to-Income Ratio
+								</dt>
+								<dd class="flex items-baseline">
+									<div class="text-2xl font-semibold text-purple-600 dark:text-purple-400">
+										{ fmt.Sprintf("%.1f", dto.DebtToIncomeRatio) }%
+									</div>
+								</dd>
+							</dl>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Savings Rate Indicator -->
+			<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border-l-4 border-green-500">
+				<div class="p-5">
+					<div class="flex items-center">
+						<div class="flex-shrink-0">
+							<div class="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
+								<svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+								</svg>
+							</div>
+						</div>
+						<div class="ml-5 w-0 flex-1">
+							<dl>
+								<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+									Savings Rate
+								</dt>
+								<dd class="flex items-baseline">
+									<div class="text-2xl font-semibold text-green-600 dark:text-green-400">
+										{ fmt.Sprintf("%.1f", dto.SavingsRate) }%
+									</div>
+								</dd>
+							</dl>
+							<div class="mt-3">
+								<div class="text-xs text-gray-500 dark:text-gray-400">
+									Monthly Savings: <span class="font-medium text-green-600 dark:text-green-400">${ fmt.Sprintf("%.2f", dto.MonthlySavings) }</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Financial Health Status -->
+			<div class="lg:col-span-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg p-6 border border-blue-100 dark:border-blue-800">
+				<div class="flex items-center justify-between mb-4">
+					<div class="flex items-center">
+						<div class="p-2 rounded-lg mr-3 bg-blue-100 dark:bg-blue-900/30">
+							<svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								if dto.HealthScore >= 80 {
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+								} else if dto.HealthScore >= 60 {
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+								} else {
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+								}
+							</svg>
+						</div>
+						<div>
+							<h3 class="text-lg font-medium text-gray-900 dark:text-white">Financial Health Score</h3>
+							<p class="text-sm text-gray-600 dark:text-gray-400">Your financial wellness overview</p>
+						</div>
+					</div>
+					<div class="text-right">
+						<div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+							{ dto.HealthScore }/100
+						</div>
+					</div>
+				</div>
+
+				<!-- Health Score Breakdown -->
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+					<div class="text-center">
+						<div class="text-2xl font-semibold text-blue-600 dark:text-blue-400">
+							{ dto.IncomeStabilityScore }%
+						</div>
+						<div class="text-sm text-gray-600 dark:text-gray-400">Income Stability</div>
+					</div>
+					<div class="text-center">
+						<div class="text-2xl font-semibold text-purple-600 dark:text-purple-400">
+							{ dto.DebtManagementScore }%
+						</div>
+						<div class="text-sm text-gray-600 dark:text-gray-400">Debt Management</div>
+					</div>
+					<div class="text-center">
+						<div class="text-2xl font-semibold text-green-600 dark:text-green-400">
+							{ dto.SavingsScore }%
+						</div>
+						<div class="text-sm text-gray-600 dark:text-gray-400">Savings Goal</div>
+					</div>
+				</div>
+
+				<!-- Recommendations -->
+				if len(dto.Recommendations) > 0 {
+					<div class="mt-6 pt-4 border-t border-blue-200 dark:border-blue-700">
+						<h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Recommendations</h4>
+						<ul class="space-y-2">
+							for _, rec := range dto.Recommendations {
+								<li class="flex items-start">
+									<svg class="w-4 h-4 text-blue-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+									</svg>
+									<span class="text-sm text-gray-700 dark:text-gray-300">{ rec }</span>
+								</li>
+							}
+						</ul>
+					</div>
+				}
+			</div>
+		</div>
+
+		<script>
+			function financeSummary() {
+				return {
+					formatCurrency(amount) {
+						if (!amount && amount !== 0) return '$0.00';
+						return '$' + Math.abs(amount).toFixed(2);
+					}
 				}
 			}
-		}
-	</script>
-}
-
-type FinanceSummaryDTO struct {
-	TotalIncome              float64
-	TotalExpenses            float64
-	DisposableIncome         float64
-	DisposableIncomeTrend    string
-	DebtToIncomeRatio        float64
-	SavingsRate              float64
-	MonthlySavings           float64
-	HealthScore              int
-	IncomeStabilityScore     int
-	DebtManagementScore      int
-	SavingsScore             int
-	Recommendations          []string
-}
-
-func getDebtRatioStatus(ratio float64) string {
-	if ratio <= 28 {
-		return "Excellent"
-	} else if ratio <= 43 {
-		return "Good"
+		</script>
 	}
-	return "High Risk"
-}
-
-func getSavingsRateStatus(rate float64) string {
-	if rate >= 20 {
-		return "Excellent"
-	} else if rate >= 10 {
-		return "Good"
-	}
-	return "Needs Work"
-}
-
-func getHealthStatusBgColor(score int) string {
-	if score >= 80 {
-		return "bg-green-100 dark:bg-green-900/30"
-	} else if score >= 60 {
-		return "bg-yellow-100 dark:bg-yellow-900/30"
-	}
-	return "bg-red-100 dark:bg-red-900/30"
-}
-
-func getHealthStatusIconColor(score int) string {
-	if score >= 80 {
-		return "text-green-600 dark:text-green-400"
-	} else if score >= 60 {
-		return "text-yellow-600 dark:text-yellow-400"
-	}
-	return "text-red-600 dark:text-red-400"
-}
-
-func getHealthStatusTextColor(score int) string {
-	if score >= 80 {
-		return "text-green-600 dark:text-green-400"
-	} else if score >= 60 {
-		return "text-yellow-600 dark:text-yellow-400"
-	}
-	return "text-red-600 dark:text-red-400"
-}
-
-func getHealthStatusLabel(score int) string {
-	if score >= 80 {
-		return "Excellent"
-	} else if score >= 60 {
-		return "Good"
-	} else if score >= 40 {
-		return "Fair"
-	}
-	return "Needs Attention"
-}
-
-func getHealthStatusMessage(score int) string {
-	if score >= 80 {
-		return "Your finances are in great shape!"
-	} else if score >= 60 {
-		return "You're on the right track with room for improvement"
-	} else if score >= 40 {
-		return "Consider focusing on debt reduction and savings"
-	}
-	return "Time to prioritize your financial health"
-}
-
-func getTrendDirection(trend string) string {
-	if trend == "" {
-		return ""
-	}
-	if strings.HasPrefix(trend, "+") || strings.Contains(strings.ToLower(trend), "up") {
-		return "up"
-	}
-	if strings.HasPrefix(trend, "-") || strings.Contains(strings.ToLower(trend), "down") {
-		return "down"
-	}
-	return "flat"
 }

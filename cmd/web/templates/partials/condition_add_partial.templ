@@ -1,11 +1,8 @@
 package partials
 
-import (
-	"fmt"
-	"github.com/a-h/templ"
-)
+import "github.com/DuckDHD/BuyOrBye/internal/types"
 
-templ ConditionAddPartial(condition *ConditionFormDTO, commonConditions []string) {
+templ ConditionAddPartial(condition *types.ConditionFormDTO, commonConditions []string) {
 	<div class="p-6" x-data="conditionForm()" x-init="initForm()">
 		<form 
 			hx-post="/health/conditions"
@@ -495,17 +492,4 @@ templ ConditionAddPartial(condition *ConditionFormDTO, commonConditions []string
 			}
 		}
 	</script>
-}
-
-type ConditionFormDTO struct {
-	ID                   string
-	Name                 string
-	Severity             string
-	DiagnosedDate        string
-	RequiresMedication   bool
-	MedicationName       string
-	MedicationDosage     string
-	MedicationFrequency  string
-	MonthlyCost          float64
-	Notes                string
 }

@@ -4,18 +4,21 @@ import (
 	"github.com/DuckDHD/BuyOrBye/internal/types"
 	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
 	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/components"
-	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/partials"
 )
 
-templ DashboardPage(user *types.UserResponseDTO, csrfToken string) {
-	@layouts.App("Dashboard", csrfToken, user, "/dashboard") {
+templ DashboardPage(dto types.DashboardPageDTO) {
+	@layouts.App("Dashboard", dto.Layout.CSRFToken, dto.Layout.User, "/dashboard") {
 		<div class="space-y-6" x-data="dashboardData()">
 			<!-- Welcome Section -->
 			<div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6 text-white">
 				<div class="flex items-center justify-between">
 					<div>
 						<h1 class="text-2xl font-bold mb-2">
-							Welcome back, { user.Name }!
+							if dto.Layout.User != nil {
+								Welcome back, { dto.Layout.User.Name }!
+							} else {
+								Welcome to BuyOrBye!
+							}
 						</h1>
 						<p class="text-blue-100">
 							Make smarter purchase decisions with AI-powered insights.

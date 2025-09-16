@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/DuckDHD/BuyOrBye/internal/dtos"
+	"github.com/DuckDHD/BuyOrBye/internal/types"
 	"github.com/DuckDHD/BuyOrBye/tests/testutils"
 )
 
@@ -61,7 +61,7 @@ func (s *FinanceFlowTestSuite) TestCompleteFinanceFlow() {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	
 	// Test: Add Income Sources
-	incomeData := []dtos.AddIncomeDTO{
+	incomeData := []types.AddIncomeDTO{
 		{
 			Source:    "Software Engineer Salary",
 			Amount:    8000.00,
@@ -85,7 +85,7 @@ func (s *FinanceFlowTestSuite) TestCompleteFinanceFlow() {
 	}
 	
 	// Test: Add Expenses
-	expenseData := []dtos.AddExpenseDTO{
+	expenseData := []types.AddExpenseDTO{
 		{
 			Category:  "housing",
 			Name:      "Monthly Rent",
@@ -126,7 +126,7 @@ func (s *FinanceFlowTestSuite) TestCompleteFinanceFlow() {
 	}
 	
 	// Test: Add Loans
-	loanData := []dtos.AddLoanDTO{
+	loanData := []types.AddLoanDTO{
 		{
 			Lender:           "Chase Bank",
 			Type:             "mortgage",
@@ -202,14 +202,14 @@ func (s *FinanceFlowTestSuite) TestFinancialHealthTransitions() {
 	
 	// Test 3: Fair Financial Health (High DTI)
 	fairData := &testutils.FinanceTestData{
-		Incomes: []dtos.AddIncomeDTO{
+		Incomes: []types.AddIncomeDTO{
 			{
 				Source:    "Job",
 				Amount:    5000.00,
 				Frequency: "monthly",
 			},
 		},
-		Expenses: []dtos.AddExpenseDTO{
+		Expenses: []types.AddExpenseDTO{
 			{
 				Category:  "housing",
 				Name:      "Rent",
@@ -219,7 +219,7 @@ func (s *FinanceFlowTestSuite) TestFinancialHealthTransitions() {
 				Priority:  1,
 			},
 		},
-		Loans: []dtos.AddLoanDTO{
+		Loans: []types.AddLoanDTO{
 			{
 				Lender:           "Bank",
 				Type:             "personal",
@@ -260,14 +260,14 @@ func (s *FinanceFlowTestSuite) TestBudgetExceededWarnings() {
 	
 	// Scenario 1: High-earning professional with lifestyle inflation
 	highEarnerData := &testutils.FinanceTestData{
-		Incomes: []dtos.AddIncomeDTO{
+		Incomes: []types.AddIncomeDTO{
 			{
 				Source:    "Tech Executive Salary",
 				Amount:    15000.00,
 				Frequency: "monthly",
 			},
 		},
-		Expenses: []dtos.AddExpenseDTO{
+		Expenses: []types.AddExpenseDTO{
 			{
 				Category:  "housing",
 				Name:      "Luxury Apartment",
@@ -301,7 +301,7 @@ func (s *FinanceFlowTestSuite) TestBudgetExceededWarnings() {
 				Priority:  3,
 			},
 		},
-		Loans: []dtos.AddLoanDTO{
+		Loans: []types.AddLoanDTO{
 			{
 				Lender:           "Private Bank",
 				Type:             "mortgage",
@@ -332,14 +332,14 @@ func (s *FinanceFlowTestSuite) TestBudgetExceededWarnings() {
 	user.Register(t, s.client)
 	
 	youngProfData := &testutils.FinanceTestData{
-		Incomes: []dtos.AddIncomeDTO{
+		Incomes: []types.AddIncomeDTO{
 			{
 				Source:    "Junior Developer",
 				Amount:    4500.00,
 				Frequency: "monthly",
 			},
 		},
-		Expenses: []dtos.AddExpenseDTO{
+		Expenses: []types.AddExpenseDTO{
 			{
 				Category:  "housing",
 				Name:      "Shared Apartment",
@@ -373,7 +373,7 @@ func (s *FinanceFlowTestSuite) TestBudgetExceededWarnings() {
 				Priority:  2,
 			},
 		},
-		Loans: []dtos.AddLoanDTO{
+		Loans: []types.AddLoanDTO{
 			{
 				Lender:           "Student Loan Corp",
 				Type:             "student",
@@ -484,7 +484,7 @@ func (s *FinanceFlowTestSuite) TestFrequencyConversions() {
 	}
 	
 	for i, testCase := range frequencyTestData {
-		income := dtos.AddIncomeDTO{
+		income := types.AddIncomeDTO{
 			Source:    fmt.Sprintf("Test Income %d", i),
 			Amount:    testCase.amount,
 			Frequency: testCase.frequency,
@@ -523,7 +523,7 @@ func (s *FinanceFlowTestSuite) TestAuthenticationFlow() {
 	user2.Register(t, s.client)
 	
 	// Add data for user 2
-	income := dtos.AddIncomeDTO{
+	income := types.AddIncomeDTO{
 		Source:    "User 2 Income",
 		Amount:    5000.00,
 		Frequency: "monthly",
@@ -538,7 +538,7 @@ func (s *FinanceFlowTestSuite) TestAuthenticationFlow() {
 	resp, body = s.client.GET(t, "/api/v1/finance/income")
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	
-	var incomes []dtos.IncomeResponseDTO
+	var incomes []types.IncomeResponseDTO
 	err := json.Unmarshal(body, &incomes)
 	require.NoError(t, err)
 	
@@ -577,7 +577,7 @@ func (s *FinanceFlowTestSuite) TestValidationAndErrorHandling() {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	
 	// Test: Valid data should work
-	validIncome := dtos.AddIncomeDTO{
+	validIncome := types.AddIncomeDTO{
 		Source:    "Valid Income",
 		Amount:    5000.00,
 		Frequency: "monthly",
@@ -602,7 +602,7 @@ func (s *FinanceFlowTestSuite) TestBusinessRuleValidation() {
 	
 	// Test 50/30/20 Rule Analysis
 	// Add income that should support good budgeting
-	income := dtos.AddIncomeDTO{
+	income := types.AddIncomeDTO{
 		Source:    "Good Salary",
 		Amount:    6000.00,
 		Frequency: "monthly",
@@ -615,7 +615,7 @@ func (s *FinanceFlowTestSuite) TestBusinessRuleValidation() {
 	// 30% for wants: 1800
 	// 20% for savings: 1200 (should result in good health)
 	
-	expenses := []dtos.AddExpenseDTO{
+	expenses := []types.AddExpenseDTO{
 		{
 			Category:  "housing",
 			Name:      "Rent",
@@ -674,7 +674,7 @@ func (s *FinanceFlowTestSuite) TestRealWorldScenarios() {
 		user.Register(t, s.client)
 		
 		// Entry-level salary
-		income := dtos.AddIncomeDTO{
+		income := types.AddIncomeDTO{
 			Source:    "Junior Software Developer",
 			Amount:    4200.00,
 			Frequency: "monthly",
@@ -683,7 +683,7 @@ func (s *FinanceFlowTestSuite) TestRealWorldScenarios() {
 		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 		
 		// Typical graduate expenses
-		expenses := []dtos.AddExpenseDTO{
+		expenses := []types.AddExpenseDTO{
 			{Category: "housing", Name: "Rent", Amount: 1300.00, Frequency: "monthly", IsFixed: true, Priority: 1},
 			{Category: "food", Name: "Food", Amount: 400.00, Frequency: "monthly", IsFixed: false, Priority: 1},
 			{Category: "transport", Name: "Car Insurance", Amount: 150.00, Frequency: "monthly", IsFixed: true, Priority: 2},
@@ -696,7 +696,7 @@ func (s *FinanceFlowTestSuite) TestRealWorldScenarios() {
 		}
 		
 		// Student loan
-		loan := dtos.AddLoanDTO{
+		loan := types.AddLoanDTO{
 			Lender:           "Federal Student Aid",
 			Type:             "student",
 			PrincipalAmount:  35000.00,
@@ -729,7 +729,7 @@ func (s *FinanceFlowTestSuite) TestRealWorldScenarios() {
 		user.Register(t, s.client)
 		
 		// Dual income household
-		incomes := []dtos.AddIncomeDTO{
+		incomes := []types.AddIncomeDTO{
 			{Source: "Senior Developer", Amount: 9500.00, Frequency: "monthly"},
 			{Source: "Partner Income", Amount: 6500.00, Frequency: "monthly"},
 			{Source: "Bonus", Amount: 15000.00, Frequency: "annual"},
@@ -741,7 +741,7 @@ func (s *FinanceFlowTestSuite) TestRealWorldScenarios() {
 		}
 		
 		// Family expenses
-		expenses := []dtos.AddExpenseDTO{
+		expenses := []types.AddExpenseDTO{
 			{Category: "housing", Name: "Mortgage", Amount: 3200.00, Frequency: "monthly", IsFixed: true, Priority: 1},
 			{Category: "food", Name: "Family Groceries", Amount: 900.00, Frequency: "monthly", IsFixed: false, Priority: 1},
 			{Category: "transport", Name: "Two Car Payments", Amount: 800.00, Frequency: "monthly", IsFixed: true, Priority: 2},
@@ -756,7 +756,7 @@ func (s *FinanceFlowTestSuite) TestRealWorldScenarios() {
 		}
 		
 		// Mortgage
-		loan := dtos.AddLoanDTO{
+		loan := types.AddLoanDTO{
 			Lender:           "Wells Fargo",
 			Type:             "mortgage",
 			PrincipalAmount:  520000.00,

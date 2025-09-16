@@ -12,6 +12,7 @@ import (
 // PurchaseIntentDTO represents the request DTO for purchase decisions
 type PurchaseIntentDTO struct {
 	ID          string  `json:"id,omitempty"`
+	UserID      string  `json:"-"` // Set by handler, not from request body
 	ItemName    string  `json:"item_name" validate:"required,min=2,max=200"`
 	ItemCost    float64 `json:"item_cost" validate:"gt=0,max=1000000"`
 	Category    string  `json:"category" validate:"required,oneof=electronics clothing food transport health entertainment other"`
@@ -325,4 +326,126 @@ func (dto *DecisionResponseDTO) ShouldWait() bool {
 // generateID generates a simple ID for DTOs (in production, use UUID)
 func generateID() string {
 	return fmt.Sprintf("dto_%d", time.Now().UnixNano())
+}
+
+// DecisionDTO represents a simple decision for template rendering
+type DecisionDTO struct {
+	ID         string    `json:"id"`
+	ItemName   string    `json:"item_name"`
+	ItemCost   float64   `json:"item_cost"`
+	Category   string    `json:"category"`
+	Decision   string    `json:"decision"`
+	Confidence float64   `json:"confidence"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// FromDomainPurchaseIntentToDecision creates PurchaseIntentDTO from domain.PurchaseIntent
+func FromDomainPurchaseIntentToDecision(intent domain.PurchaseIntent) PurchaseIntentDTO {
+	return PurchaseIntentDTO{
+		ID:          intent.ID,
+		ItemName:    intent.ItemName,
+		ItemCost:    intent.ItemCost,
+		Category:    intent.Category,
+		Urgency:     intent.Urgency,
+		Frequency:   intent.Frequency,
+		Purpose:     intent.Purpose,
+		Alternative: intent.Alternative,
+	}
+}
+
+// FromDomainDecisionOutcome creates DecisionResponseDTO from domain.DecisionOutcome
+func FromDomainDecisionOutcome(outcome domain.DecisionOutcome) DecisionResponseDTO {
+	dto := DecisionResponseDTO{
+		ID:              outcome.ID,
+		UserID:          outcome.UserID,
+		IntentID:        outcome.IntentID,
+		Decision:        outcome.Decision,
+		Confidence:      outcome.Confidence,
+		PrimaryReason:   outcome.PrimaryReason,
+		WaitPeriod:      outcome.WaitPeriod,
+		MaxBudget:       outcome.MaxBudget,
+		CreatedAt:       outcome.CreatedAt,
+		ProcessingTime:  outcome.ProcessingTime,
+	}
+
+	// Convert factors
+	dto.Factors = make([]DecisionFactorDTO, len(outcome.Factors))
+	for i, factor := range outcome.Factors {
+		dto.Factors[i] = DecisionFactorDTO{
+			Category:    factor.Category,
+			Impact:      factor.Impact,
+			Weight:      factor.Weight,
+			Description: factor.Description,
+		}
+	}
+
+	// Copy recommendations
+	dto.Recommendations = make([]string, len(outcome.Recommendations))
+	copy(dto.Recommendations, outcome.Recommendations)
+
+	return dto
+}
+
+// FromDomainDecisionOutcomeList creates slice of DecisionResponseDTO from slice of domain.DecisionOutcome
+func FromDomainDecisionOutcomeList(outcomes []domain.DecisionOutcome) []DecisionResponseDTO {
+	dtos := make([]DecisionResponseDTO, len(outcomes))
+	for i, outcome := range outcomes {
+		dtos[i] = FromDomainDecisionOutcome(outcome)
+	}
+	return dtos
+}
+
+// FromDomainPurchaseIntentListToDecision creates slice of PurchaseIntentDTO from slice of domain.PurchaseIntent
+func FromDomainPurchaseIntentListToDecision(intents []domain.PurchaseIntent) []PurchaseIntentDTO {
+	dtos := make([]PurchaseIntentDTO, len(intents))
+	for i, intent := range intents {
+		dtos[i] = FromDomainPurchaseIntentToDecision(intent)
+	}
+	return dtos
+}
+
+// FromDomainDecision creates DecisionDTO from domain decision data
+func FromDomainDecision(id, itemName string, itemCost float64, category, decision string, confidence float64, createdAt time.Time) DecisionDTO {
+	return DecisionDTO{
+		ID:         id,
+		ItemName:   itemName,
+		ItemCost:   itemCost,
+		Category:   category,
+		Decision:   decision,
+		Confidence: confidence,
+		CreatedAt:  createdAt,
+	}
+}
+
+// FromDomainDecisionSummary creates DecisionSummaryDTO from domain.PastDecision
+func FromDomainDecisionSummary(decision domain.PastDecision) DecisionSummaryDTO {
+	return DecisionSummaryDTO{
+		ID:         "", // PastDecision may not have ID
+		ItemName:   decision.ItemName,
+		ItemCost:   decision.ItemCost,
+		Category:   decision.Category,
+		Decision:   decision.Decision,
+		Confidence: 0.7, // Default confidence for historical data
+		CreatedAt:  time.Now().AddDate(0, 0, -decision.DaysAgo),
+		DaysAgo:    decision.DaysAgo,
+	}
+}
+
+// FromDomainDecisionSummaryList creates slice of DecisionSummaryDTO from slice of domain.PastDecision
+func FromDomainDecisionSummaryList(decisions []domain.PastDecision) []DecisionSummaryDTO {
+	dtos := make([]DecisionSummaryDTO, len(decisions))
+	for i, decision := range decisions {
+		dtos[i] = FromDomainDecisionSummary(decision)
+	}
+	return dtos
+}
+
+// ToDomainPurchaseIntent converts PurchaseIntentDTO to domain.PurchaseIntent
+func (dto PurchaseIntentDTO) ToDomainPurchaseIntent() (*domain.PurchaseIntent, error) {
+	return dto.ToDomain()
+}
+
+// ToDomainDecisionOutcome converts DecisionResponseDTO to domain.DecisionOutcome
+func (dto DecisionResponseDTO) ToDomainDecisionOutcome() (*domain.DecisionOutcome, error) {
+	return dto.ToDomain()
 }

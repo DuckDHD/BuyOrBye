@@ -13,6 +13,22 @@ var (
 	ErrProfileNotFound = errors.New("profile not found")
 )
 
+// AuthService defines authentication operations with domain objects
+type AuthService interface {
+	// Login authenticates a user with email and password
+	Login(ctx context.Context, credentials domain.Credentials) (*domain.TokenPair, error)
+
+	// Register creates a new user account and returns authentication tokens
+	Register(ctx context.Context, user *domain.User, password string) (*domain.TokenPair, error)
+
+	// RefreshToken generates a new token pair using a valid refresh token
+	RefreshToken(ctx context.Context, refreshToken string) (*domain.TokenPair, error)
+
+	// Logout revokes a user's refresh token
+	Logout(ctx context.Context, refreshToken string) error
+}
+
+
 // HealthService defines health management operations
 type HealthService interface {
 	// Profile operations
@@ -38,6 +54,7 @@ type HealthService interface {
 	
 	// Calculations & Analysis
 	CalculateHealthSummary(ctx context.Context, userID string) (*domain.HealthSummary, error)
+	CalculateRisk(ctx context.Context, userID string) (interface{}, error)
 }
 
 // RiskCalculator defines health risk calculation operations

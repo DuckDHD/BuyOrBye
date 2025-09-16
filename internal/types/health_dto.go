@@ -6,8 +6,8 @@ import (
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
 )
 
-// CreateHealthProfileDTO represents the request to create a health profile
-type CreateHealthProfileDTO struct {
+// CreateHealthProfileRequestDTO represents the request to create a health profile
+type CreateHealthProfileRequestDTO struct {
 	Age        int     `json:"age" validate:"required,min=0,max=150"`
 	Gender     string  `json:"gender" validate:"required,oneof=male female other"`
 	Height     float64 `json:"height" validate:"required,gt=0"` // in cm
@@ -15,14 +15,20 @@ type CreateHealthProfileDTO struct {
 	FamilySize int     `json:"family_size" validate:"required,min=1,max=20"`
 }
 
-// UpdateProfileDTO represents partial updates to a health profile
-type UpdateProfileDTO struct {
+// CreateHealthProfileDTO represents the request to create a health profile (alias for backward compatibility)
+type CreateHealthProfileDTO = CreateHealthProfileRequestDTO
+
+// UpdateHealthProfileRequestDTO represents partial updates to a health profile
+type UpdateHealthProfileRequestDTO struct {
 	Age        *int     `json:"age,omitempty" validate:"omitempty,min=0,max=150"`
 	Gender     *string  `json:"gender,omitempty" validate:"omitempty,oneof=male female other"`
 	Height     *float64 `json:"height,omitempty" validate:"omitempty,gt=0"`
 	Weight     *float64 `json:"weight,omitempty" validate:"omitempty,gt=0"`
 	FamilySize *int     `json:"family_size,omitempty" validate:"omitempty,min=1,max=20"`
 }
+
+// UpdateProfileDTO represents partial updates to a health profile (alias for backward compatibility)
+type UpdateProfileDTO = UpdateHealthProfileRequestDTO
 
 // HealthProfileResponseDTO represents a health profile response
 type HealthProfileResponseDTO struct {
@@ -38,8 +44,8 @@ type HealthProfileResponseDTO struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-// AddMedicalConditionDTO represents the request to add a medical condition
-type AddMedicalConditionDTO struct {
+// CreateMedicalConditionRequestDTO represents the request to add a medical condition
+type CreateMedicalConditionRequestDTO struct {
 	Name               string  `json:"name" validate:"required,min=2,max=100"`
 	Category           string  `json:"category" validate:"required,oneof=chronic acute mental_health preventive"`
 	Severity           string  `json:"severity" validate:"required,oneof=mild moderate severe critical"`
@@ -50,8 +56,11 @@ type AddMedicalConditionDTO struct {
 	RiskFactor         float64 `json:"risk_factor" validate:"omitempty,gte=0,lte=1"` // defaults to 0.1
 }
 
-// UpdateConditionDTO represents partial updates to a medical condition
-type UpdateConditionDTO struct {
+// AddMedicalConditionDTO represents the request to add a medical condition (alias for backward compatibility)
+type AddMedicalConditionDTO = CreateMedicalConditionRequestDTO
+
+// UpdateMedicalConditionRequestDTO represents partial updates to a medical condition
+type UpdateMedicalConditionRequestDTO struct {
 	Name               *string  `json:"name,omitempty" validate:"omitempty,min=2,max=100"`
 	Category           *string  `json:"category,omitempty" validate:"omitempty,oneof=chronic acute mental_health preventive"`
 	Severity           *string  `json:"severity,omitempty" validate:"omitempty,oneof=mild moderate severe critical"`
@@ -60,6 +69,9 @@ type UpdateConditionDTO struct {
 	MonthlyMedCost     *float64 `json:"monthly_med_cost,omitempty" validate:"omitempty,gte=0"`
 	RiskFactor         *float64 `json:"risk_factor,omitempty" validate:"omitempty,gte=0,lte=1"`
 }
+
+// UpdateConditionDTO represents partial updates to a medical condition (alias for backward compatibility)
+type UpdateConditionDTO = UpdateMedicalConditionRequestDTO
 
 // MedicalConditionResponseDTO represents a medical condition response
 type MedicalConditionResponseDTO struct {
@@ -78,8 +90,14 @@ type MedicalConditionResponseDTO struct {
 	UpdatedAt          time.Time `json:"updated_at"`
 }
 
-// AddMedicalExpenseDTO represents the request to add a medical expense
-type AddMedicalExpenseDTO struct {
+// MedicalConditionListResponseDTO represents a list of medical conditions response
+type MedicalConditionListResponseDTO struct {
+	Conditions []MedicalConditionResponseDTO `json:"conditions"`
+	Total      int                           `json:"total"`
+}
+
+// CreateMedicalExpenseRequestDTO represents the request to add a medical expense
+type CreateMedicalExpenseRequestDTO struct {
 	Amount           float64 `json:"amount" validate:"required,gt=0"`
 	Category         string  `json:"category" validate:"required,oneof=doctor_visit medication hospital lab_test therapy equipment"`
 	Description      string  `json:"description" validate:"required,min=2,max=200"`
@@ -89,6 +107,9 @@ type AddMedicalExpenseDTO struct {
 	InsurancePayment float64 `json:"insurance_payment" validate:"omitempty,gte=0"`
 	Date             string  `json:"date" validate:"required"` // ISO 8601 date
 }
+
+// AddMedicalExpenseDTO represents the request to add a medical expense (alias for backward compatibility)
+type AddMedicalExpenseDTO = CreateMedicalExpenseRequestDTO
 
 // MedicalExpenseResponseDTO represents a medical expense response
 type MedicalExpenseResponseDTO struct {
@@ -108,8 +129,14 @@ type MedicalExpenseResponseDTO struct {
 	UpdatedAt        time.Time `json:"updated_at"`
 }
 
-// AddInsurancePolicyDTO represents the request to add an insurance policy
-type AddInsurancePolicyDTO struct {
+// MedicalExpenseListResponseDTO represents a list of medical expenses response
+type MedicalExpenseListResponseDTO struct {
+	Expenses []MedicalExpenseResponseDTO `json:"expenses"`
+	Total    int                         `json:"total"`
+}
+
+// CreateInsurancePolicyRequestDTO represents the request to add an insurance policy
+type CreateInsurancePolicyRequestDTO struct {
 	Provider            string  `json:"provider" validate:"required,min=2,max=100"`
 	PolicyNumber        string  `json:"policy_number" validate:"required,min=5,max=50"`
 	Type                string  `json:"type" validate:"required,oneof=health dental vision"`
@@ -123,6 +150,9 @@ type AddInsurancePolicyDTO struct {
 	DeductibleMet       float64 `json:"deductible_met" validate:"omitempty,gte=0"`
 	OutOfPocketCurrent  float64 `json:"out_of_pocket_current" validate:"omitempty,gte=0"`
 }
+
+// AddInsurancePolicyDTO represents the request to add an insurance policy (alias for backward compatibility)
+type AddInsurancePolicyDTO = CreateInsurancePolicyRequestDTO
 
 // InsurancePolicyResponseDTO represents an insurance policy response
 type InsurancePolicyResponseDTO struct {
@@ -145,8 +175,14 @@ type InsurancePolicyResponseDTO struct {
 	UpdatedAt          time.Time `json:"updated_at"`
 }
 
-// HealthSummaryDTO represents the comprehensive health summary response
-type HealthSummaryDTO struct {
+// InsurancePolicyListResponseDTO represents a list of insurance policies response
+type InsurancePolicyListResponseDTO struct {
+	Policies []InsurancePolicyResponseDTO `json:"policies"`
+	Total    int                          `json:"total"`
+}
+
+// HealthSummaryResponseDTO represents the comprehensive health summary response
+type HealthSummaryResponseDTO struct {
 	UserID                    string    `json:"user_id"`
 	HealthRiskScore           int       `json:"health_risk_score"`           // 0-100
 	HealthRiskLevel           string    `json:"health_risk_level"`           // low/moderate/high/critical
@@ -163,6 +199,16 @@ type HealthSummaryDTO struct {
 	HighRiskConditionsCount   int       `json:"high_risk_conditions_count"`
 	CostReductionOpportunities int      `json:"cost_reduction_opportunities"`
 	UpdatedAt                 time.Time `json:"updated_at"`
+}
+
+// HealthSummaryDTO represents the comprehensive health summary response (alias for backward compatibility)
+type HealthSummaryDTO = HealthSummaryResponseDTO
+
+// UpdateDeductibleRequestDTO represents the request to update deductible information
+type UpdateDeductibleRequestDTO struct {
+	Amount             float64  `json:"amount" validate:"required,gte=0"`
+	DeductibleMet      *float64 `json:"deductible_met,omitempty" validate:"omitempty,gte=0"`
+	OutOfPocketCurrent *float64 `json:"out_of_pocket_current,omitempty" validate:"omitempty,gte=0"`
 }
 
 // ToDomain conversion methods
@@ -395,4 +441,120 @@ func FromHealthSummary(summary *domain.HealthSummary, activeConditions, highRisk
 		CostReductionOpportunities: costReductionOpportunities,
 		UpdatedAt:                 summary.UpdatedAt,
 	}
+}
+
+// FromDomainHealthProfileList creates slice of HealthProfileResponseDTO from slice of domain.HealthProfile
+func FromDomainHealthProfileList(profiles []*domain.HealthProfile) []HealthProfileResponseDTO {
+	dtos := make([]HealthProfileResponseDTO, len(profiles))
+	for i, profile := range profiles {
+		dtos[i] = FromHealthProfile(profile)
+	}
+	return dtos
+}
+
+// FromDomainMedicalConditionList creates slice of MedicalConditionResponseDTO from slice of domain.MedicalCondition
+func FromDomainMedicalConditionList(conditions []*domain.MedicalCondition) []MedicalConditionResponseDTO {
+	dtos := make([]MedicalConditionResponseDTO, len(conditions))
+	for i, condition := range conditions {
+		dtos[i] = FromMedicalCondition(condition)
+	}
+	return dtos
+}
+
+// FromDomainMedicalExpenseList creates slice of MedicalExpenseResponseDTO from slice of domain.MedicalExpense
+func FromDomainMedicalExpenseList(expenses []*domain.MedicalExpense) []MedicalExpenseResponseDTO {
+	dtos := make([]MedicalExpenseResponseDTO, len(expenses))
+	for i, expense := range expenses {
+		dtos[i] = FromMedicalExpense(expense)
+	}
+	return dtos
+}
+
+// FromDomainInsurancePolicyList creates slice of InsurancePolicyResponseDTO from slice of domain.InsurancePolicy
+func FromDomainInsurancePolicyList(policies []*domain.InsurancePolicy) []InsurancePolicyResponseDTO {
+	dtos := make([]InsurancePolicyResponseDTO, len(policies))
+	for i, policy := range policies {
+		dtos[i] = FromInsurancePolicy(policy)
+	}
+	return dtos
+}
+
+// Update methods for applying partial updates
+
+// ApplyUpdates applies UpdateHealthProfileRequestDTO fields to domain.HealthProfile
+func (dto UpdateHealthProfileRequestDTO) ApplyUpdates(profile *domain.HealthProfile) {
+	if dto.Age != nil {
+		profile.Age = *dto.Age
+	}
+	if dto.Gender != nil {
+		profile.Gender = *dto.Gender
+	}
+	if dto.Height != nil {
+		profile.Height = *dto.Height
+	}
+	if dto.Weight != nil {
+		profile.Weight = *dto.Weight
+	}
+	if dto.FamilySize != nil {
+		profile.FamilySize = *dto.FamilySize
+	}
+
+	// Recalculate BMI if height or weight changed
+	if dto.Height != nil || dto.Weight != nil {
+		bmi, _ := profile.CalculateBMI()
+		profile.BMI = bmi
+	}
+
+	profile.UpdatedAt = time.Now()
+}
+
+// ApplyUpdates applies UpdateMedicalConditionRequestDTO fields to domain.MedicalCondition
+func (dto UpdateMedicalConditionRequestDTO) ApplyUpdates(condition *domain.MedicalCondition) {
+	if dto.Name != nil {
+		condition.Name = *dto.Name
+	}
+	if dto.Category != nil {
+		condition.Category = *dto.Category
+	}
+	if dto.Severity != nil {
+		condition.Severity = *dto.Severity
+	}
+	if dto.IsActive != nil {
+		condition.IsActive = *dto.IsActive
+	}
+	if dto.RequiresMedication != nil {
+		condition.RequiresMedication = *dto.RequiresMedication
+	}
+	if dto.MonthlyMedCost != nil {
+		condition.MonthlyMedCost = *dto.MonthlyMedCost
+	}
+	if dto.RiskFactor != nil {
+		condition.RiskFactor = *dto.RiskFactor
+	}
+	condition.UpdatedAt = time.Now()
+}
+
+// ApplyUpdates applies UpdateDeductibleRequestDTO fields to domain.InsurancePolicy
+func (dto UpdateDeductibleRequestDTO) ApplyUpdates(policy *domain.InsurancePolicy) {
+	if dto.DeductibleMet != nil {
+		policy.DeductibleMet = *dto.DeductibleMet
+	}
+	if dto.OutOfPocketCurrent != nil {
+		policy.OutOfPocketCurrent = *dto.OutOfPocketCurrent
+	}
+	policy.UpdatedAt = time.Now()
+}
+
+// ConditionFormDTO represents the form data for health conditions (for templates)
+type ConditionFormDTO struct {
+	ID                   string  `json:"id"`
+	Name                 string  `json:"name"`
+	Severity             string  `json:"severity"`
+	DiagnosedDate        string  `json:"diagnosed_date"`
+	RequiresMedication   bool    `json:"requires_medication"`
+	MedicationName       string  `json:"medication_name"`
+	MedicationDosage     string  `json:"medication_dosage"`
+	MedicationFrequency  string  `json:"medication_frequency"`
+	MonthlyCost          float64 `json:"monthly_cost"`
+	Notes                string  `json:"notes"`
 }

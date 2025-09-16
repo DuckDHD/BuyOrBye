@@ -1,6 +1,9 @@
 package partials
 
-templ DecisionFilters(filters *DecisionFiltersDTO) {
+import "github.com/DuckDHD/BuyOrBye/internal/types"
+import "fmt"
+
+templ DecisionFilters(filters *types.DecisionFiltersDTO) {
 	<div x-data="filterControls()" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 		<!-- Decision Type Filter -->
 		<div>
@@ -349,7 +352,7 @@ templ DecisionListItem(decision DecisionItemDTO) {
 					</span>
 				</div>
 				<div class="mt-1 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
-					<span>${ formatCurrency(decision.Cost) }</span>
+					<span>${ formatFilterCurrency(decision.Cost) }</span>
 					if decision.Category != "" {
 						<span>{ decision.Category }</span>
 					}
@@ -384,7 +387,7 @@ templ DecisionGridItem(decision DecisionItemDTO) {
 						{ decision.ItemName }
 					</h3>
 					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-						${ formatCurrency(decision.Cost) }
+						${ formatFilterCurrency(decision.Cost) }
 					</p>
 				</div>
 				<span class={ "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium " + getDecisionBadgeClass(decision.Decision) }>
@@ -555,6 +558,6 @@ func min(a, b int) int {
 	return b
 }
 
-func formatCurrency(amount float64) string {
+func formatFilterCurrency(amount float64) string {
 	return fmt.Sprintf("%.2f", amount)
 }
