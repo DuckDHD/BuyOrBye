@@ -35,12 +35,13 @@ var (
 	CreditCardPattern  = regexp.MustCompile(`\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b`) // Credit card pattern
 	PhonePattern       = regexp.MustCompile(`\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b`) // Phone pattern
 	EmailPattern       = regexp.MustCompile(`\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b`) // Email pattern
-	
+
 	// Keep old names for backward compatibility
 	aiSsnRegex    = SSNPattern
 	aiCcRegex     = CreditCardPattern
 	aiPhoneRegex  = PhonePattern
 	aiEmailRegex  = EmailPattern
+
 )
 
 // Validate performs comprehensive validation of the AI prompt

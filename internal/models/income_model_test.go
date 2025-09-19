@@ -6,7 +6,7 @@ import (
 
 	"github.com/DuckDHD/BuyOrBye/internal/domain"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -23,7 +23,7 @@ func TestIncomeModel_TableName_ReturnsCorrectName(t *testing.T) {
 
 func TestIncomeModel_BeforeCreate_SetsIDAndTimestamps(t *testing.T) {
 	// Arrange
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open("root:@tcp(localhost:3306)/buyorbye_test?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{})
 	assert.NoError(t, err)
 
 	model := &IncomeModel{
@@ -47,7 +47,7 @@ func TestIncomeModel_BeforeCreate_SetsIDAndTimestamps(t *testing.T) {
 
 func TestIncomeModel_BeforeCreate_DoesNotOverrideExistingID(t *testing.T) {
 	// Arrange
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open("root:@tcp(localhost:3306)/buyorbye_test?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{})
 	assert.NoError(t, err)
 
 	existingID := "income-existing-123"
@@ -70,7 +70,7 @@ func TestIncomeModel_BeforeCreate_DoesNotOverrideExistingID(t *testing.T) {
 
 func TestIncomeModel_BeforeUpdate_UpdatesTimestamp(t *testing.T) {
 	// Arrange
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open("root:@tcp(localhost:3306)/buyorbye_test?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{})
 	assert.NoError(t, err)
 
 	oldTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)

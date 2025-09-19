@@ -1,136 +1,201 @@
 package config
 
 import (
-	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/spf13/viper"
+	"github.com/joho/godotenv"
 )
 
 // Config represents the complete application configuration
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server" validate:"required"`
-	Database DatabaseConfig `mapstructure:"database" validate:"required"`
-	Auth     AuthConfig     `mapstructure:"auth" validate:"required"`
-	Logging  LoggingConfig  `mapstructure:"logging" validate:"required"`
-	Finance  FinanceConfig  `mapstructure:"finance" validate:"required"`
+	Server   ServerConfig   `json:"server"`
+	Database DatabaseConfig `json:"database"`
+	Auth     AuthConfig     `json:"auth"`
+	Security SecurityConfig `json:"security"`
+	Finance  FinanceConfig  `json:"finance"`
+	Health   HealthConfig   `json:"health"`
+	App      AppConfig      `json:"app"`
+	OpenAI   OpenAIConfig   `json:"openai"`
 }
 
 // ServerConfig holds server-related configuration
 type ServerConfig struct {
-	Port         int           `mapstructure:"port" validate:"min=1,max=65535"`
-	Environment  string        `mapstructure:"environment" validate:"required,oneof=development production test"`
-	ReadTimeout  time.Duration `mapstructure:"read_timeout" validate:"required"`
-	WriteTimeout time.Duration `mapstructure:"write_timeout" validate:"required"`
-	IdleTimeout  time.Duration `mapstructure:"idle_timeout" validate:"required"`
+	Port int `json:"port"`
 }
 
 // DatabaseConfig holds database-related configuration
 type DatabaseConfig struct {
-	Host            string        `mapstructure:"host"`
-	Port            int           `mapstructure:"port" validate:"min=0,max=65535"`
-	Database        string        `mapstructure:"database" validate:"required"`
-	Username        string        `mapstructure:"username"`
-	Password        string        `mapstructure:"password"`
-	MaxIdleConns    int           `mapstructure:"max_idle_conns" validate:"min=1"`
-	MaxOpenConns    int           `mapstructure:"max_open_conns" validate:"min=1"`
-	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
+	Host            string        `json:"host"`
+	Port            int           `json:"port"`
+	Database        string        `json:"database"`
+	Username        string        `json:"username"`
+	Password        string        `json:"password"`
+	RootPassword    string        `json:"root_password"`
+	Driver          string        `json:"driver"`
+	MaxOpenConns    int           `json:"max_open_conns"`
+	MaxIdleConns    int           `json:"max_idle_conns"`
+	ConnMaxLifetime time.Duration `json:"conn_max_lifetime"`
 }
 
 // AuthConfig holds authentication-related configuration
 type AuthConfig struct {
-	JWTSecret       string        `mapstructure:"jwt_secret" validate:"required,min=32"`
-	BCryptCost      int           `mapstructure:"bcrypt_cost" validate:"min=4,max=20"`
-	AccessTokenTTL  time.Duration `mapstructure:"access_token_ttl" validate:"required"`
-	RefreshTokenTTL time.Duration `mapstructure:"refresh_token_ttl" validate:"required"`
-	CSRFSecret      string        `mapstructure:"csrf_secret" validate:"required,min=32"`
+	JWTSecret       string        `json:"jwt_secret"`
+	BCryptCost      int           `json:"bcrypt_cost"`
+	AccessTokenTTL  time.Duration `json:"access_token_ttl"`
+	RefreshTokenTTL time.Duration `json:"refresh_token_ttl"`
 }
 
-// LoggingConfig holds logging-related configuration
-type LoggingConfig struct {
-	Level       string `mapstructure:"level" validate:"required,oneof=debug info warn error"`
-	Environment string `mapstructure:"environment" validate:"required,oneof=development production test"`
+// SecurityConfig holds security-related configuration
+type SecurityConfig struct {
+	CSRFSecret string `json:"csrf_secret"`
 }
 
 // FinanceConfig holds finance-related configuration
 type FinanceConfig struct {
-	HealthyDTIRatio     float64 `mapstructure:"healthy_dti_ratio" validate:"min=0,max=1"`
-	MinSavingsRate      float64 `mapstructure:"min_savings_rate" validate:"min=0,max=1"`
-	EmergencyFundMonths int     `mapstructure:"emergency_fund_months" validate:"min=1"`
+	HealthyDTIRatio     float64 `json:"healthy_dti_ratio"`
+	MinSavingsRate      float64 `json:"min_savings_rate"`
+	EmergencyFundMonths int     `json:"emergency_fund_months"`
 }
 
-// LoadConfig loads configuration from files and environment variables
+// HealthConfig holds health-related configuration
+type HealthConfig struct {
+	RiskThresholdLow              int           `json:"risk_threshold_low"`
+	RiskThresholdModerate         int           `json:"risk_threshold_moderate"`
+	RiskThresholdHigh             int           `json:"risk_threshold_high"`
+	EmergencyFundBaseMonths       int           `json:"emergency_fund_base_months"`
+	MaxFamilySize                 int           `json:"max_family_size"`
+	DataEncryptionKey             string        `json:"data_encryption_key"`
+	MedicalRecordRetentionDays    int           `json:"medical_record_retention_days"`
+	InsuranceVerificationTimeout  time.Duration `json:"insurance_verification_timeout"`
+	AuditLogEnabled               bool          `json:"audit_log_enabled"`
+}
+
+// AppConfig holds application-related configuration
+type AppConfig struct {
+	Environment string `json:"environment"`
+}
+
+// OpenAIConfig holds OpenAI-related configuration
+type OpenAIConfig struct {
+	APIKey string `json:"api_key"`
+}
+
+// LoggingConfig holds logging configuration (for compatibility)
+type LoggingConfig struct {
+	Level       string `json:"level"`
+	Environment string `json:"environment"`
+}
+
+// LoadConfig loads configuration from environment variables
 func LoadConfig() (*Config, error) {
-	// Determine environment
-	env := getEnvironment()
+	// Load .env file if it exists (ignore errors if file doesn't exist)
+	godotenv.Load()
 
-	// Setup Viper
-	v := viper.New()
-
-	// Set config name and paths
-	v.SetConfigName(env)
-	v.SetConfigType("yaml")
-	v.AddConfigPath("./configs")
-	v.AddConfigPath("../configs")
-	v.AddConfigPath("../../configs")
-
-	// Enable environment variable substitution
-	v.AutomaticEnv()
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-	// Read config file
-	if err := v.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+	config := &Config{
+		Server: ServerConfig{
+			Port: getEnvInt("PORT", 8080),
+		},
+		Database: DatabaseConfig{
+			Host:            getEnv("BLUEPRINT_DB_HOST", "mysql_bp"),
+			Port:            getEnvInt("BLUEPRINT_DB_PORT", 3306),
+			Database:        getEnv("BLUEPRINT_DB_DATABASE", "blueprint"),
+			Username:        getEnv("BLUEPRINT_DB_USERNAME", "melkey"),
+			Password:        getEnv("BLUEPRINT_DB_PASSWORD", "password1234"),
+			RootPassword:    getEnv("BLUEPRINT_DB_ROOT_PASSWORD", "password4321"),
+			Driver:          "mysql", // Fixed as MySQL only
+			MaxOpenConns:    getEnvInt("DB_MAX_OPEN_CONNS", 25),
+			MaxIdleConns:    getEnvInt("DB_MAX_IDLE_CONNS", 5),
+			ConnMaxLifetime: getEnvDuration("DB_CONN_MAX_LIFETIME", "300s"),
+		},
+		Auth: AuthConfig{
+			JWTSecret:       getEnv("JWT_SECRET", "your-very-secure-32-character-jwt-secret-key-here-2024-buyorbye"),
+			BCryptCost:      getEnvInt("BCRYPT_COST", 14),
+			AccessTokenTTL:  getEnvDuration("ACCESS_TOKEN_TTL", "15m"),
+			RefreshTokenTTL: getEnvDuration("REFRESH_TOKEN_TTL", "168h"),
+		},
+		Security: SecurityConfig{
+			CSRFSecret: getEnv("CSRF_SECRET", "your-very-secure-32-character-csrf-secret-key-here-2024-secure"),
+		},
+		Finance: FinanceConfig{
+			HealthyDTIRatio:     getEnvFloat("HEALTHY_DTI_RATIO", 0.36),
+			MinSavingsRate:      getEnvFloat("MIN_SAVINGS_RATE", 0.20),
+			EmergencyFundMonths: getEnvInt("EMERGENCY_FUND_MONTHS", 6),
+		},
+		Health: HealthConfig{
+			RiskThresholdLow:              getEnvInt("HEALTH_RISK_THRESHOLD_LOW", 25),
+			RiskThresholdModerate:         getEnvInt("HEALTH_RISK_THRESHOLD_MODERATE", 50),
+			RiskThresholdHigh:             getEnvInt("HEALTH_RISK_THRESHOLD_HIGH", 75),
+			EmergencyFundBaseMonths:       getEnvInt("EMERGENCY_FUND_BASE_MONTHS", 6),
+			MaxFamilySize:                 getEnvInt("MAX_FAMILY_SIZE", 20),
+			DataEncryptionKey:             getEnv("HEALTH_DATA_ENCRYPTION_KEY", ""),
+			MedicalRecordRetentionDays:    getEnvInt("MEDICAL_RECORD_RETENTION_DAYS", 2555),
+			InsuranceVerificationTimeout:  getEnvDuration("INSURANCE_VERIFICATION_TIMEOUT", "30s"),
+			AuditLogEnabled:               getEnvBool("HEALTH_AUDIT_LOG_ENABLED", true),
+		},
+		App: AppConfig{
+			Environment: normalizeEnvironment(getEnv("APP_ENV", "local")),
+		},
+		OpenAI: OpenAIConfig{
+			APIKey: getEnv("OPENAI_API_KEY", ""),
+		},
 	}
 
-	// Expand environment variables in config values with defaults
-	v.Set("database.host", expandEnvWithDefault(v.GetString("database.host"), "localhost"))
-	v.Set("database.port", expandEnvIntWithDefault(v.GetString("database.port"), 3306))
-	v.Set("database.database", expandEnvWithDefault(v.GetString("database.database"), "blueprint"))
-	v.Set("database.username", expandEnvWithDefault(v.GetString("database.username"), ""))
-	v.Set("database.password", expandEnvWithDefault(v.GetString("database.password"), ""))
-	v.Set("auth.jwt_secret", expandEnvWithDefault(v.GetString("auth.jwt_secret"), ""))
-	v.Set("auth.csrf_secret", expandEnvWithDefault(v.GetString("auth.csrf_secret"), ""))
-
-	// Unmarshal into config struct
-	var config Config
-	if err := v.Unmarshal(&config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
-	}
-
-	// Validate configuration
-	if err := validateConfig(&config); err != nil {
-		return nil, fmt.Errorf("config validation failed: %w", err)
-	}
-
-	return &config, nil
+	return config, nil
 }
 
-// getEnvironment determines the current environment
-func getEnvironment() string {
-	// Check various environment variables
-	if env := os.Getenv("GO_ENV"); env != "" {
-		return normalizeEnvironment(env)
-	}
-	if env := os.Getenv("GIN_MODE"); env != "" {
-		return normalizeEnvironment(env)
-	}
-	if env := os.Getenv("APP_ENV"); env != "" {
-		return normalizeEnvironment(env)
-	}
+// GetDSN returns the MySQL database connection string
+func (d *DatabaseConfig) GetDSN() string {
+	return d.Username + ":" + d.Password + "@tcp(" + d.Host + ":" + strconv.Itoa(d.Port) + ")/" + d.Database + "?charset=utf8mb4&parseTime=True&loc=Local"
+}
 
-	// Default to development
-	return "development"
+// Helper functions
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvFloat(key string, defaultValue float64) float64 {
+	if value := os.Getenv(key); value != "" {
+		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
+			return floatValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvDuration(key string, defaultValue string) time.Duration {
+	value := getEnv(key, defaultValue)
+	duration, err := time.ParseDuration(value)
+	if err != nil {
+		duration, _ = time.ParseDuration(defaultValue)
+	}
+	return duration
 }
 
 // normalizeEnvironment maps various environment names to our standard names
 func normalizeEnvironment(env string) string {
-	env = strings.ToLower(env)
 	switch env {
 	case "prod", "production", "release":
 		return "production"
@@ -143,115 +208,16 @@ func normalizeEnvironment(env string) string {
 	}
 }
 
-// expandEnv expands environment variables in strings
-func expandEnv(value string) string {
-	if strings.HasPrefix(value, "${") && strings.HasSuffix(value, "}") {
-		envVar := value[2 : len(value)-1]
-		if envValue := os.Getenv(envVar); envValue != "" {
-			return envValue
-		}
-		// Return original value if env var not found
-		return value
-	}
-	return value
-}
-
-// expandEnvWithDefault expands environment variables with a default value
-func expandEnvWithDefault(value, defaultValue string) string {
-	if strings.HasPrefix(value, "${") && strings.HasSuffix(value, "}") {
-		envVar := value[2 : len(value)-1]
-		if envValue := os.Getenv(envVar); envValue != "" {
-			return envValue
-		}
-		// Return default value if env var not found
-		return defaultValue
-	}
-	return value
-}
-
-// expandEnvInt expands environment variables for integer values
-func expandEnvInt(value string) interface{} {
-	expanded := expandEnv(value)
-	// If it's still a string after expansion, return as-is for Viper to handle
-	return expanded
-}
-
-// expandEnvIntWithDefault expands environment variables for integer values with a default
-func expandEnvIntWithDefault(value string, defaultValue int) int {
-	if strings.HasPrefix(value, "${") && strings.HasSuffix(value, "}") {
-		envVar := value[2 : len(value)-1]
-		if envValue := os.Getenv(envVar); envValue != "" {
-			if intValue, err := strconv.Atoi(envValue); err == nil {
-				return intValue
-			}
-		}
-		// Return default value if env var not found or can't be parsed
-		return defaultValue
-	}
-	// Try to parse the original value as int, return default if it fails
-	if intValue, err := strconv.Atoi(value); err == nil {
-		return intValue
-	}
-	return defaultValue
-}
-
-// validateConfig validates the configuration using struct tags
-func validateConfig(config *Config) error {
-	validator := validator.New()
-	if err := validator.Struct(config); err != nil {
-		return fmt.Errorf("validation errors: %w", err)
-	}
-	return nil
-}
-
-// GetConfigPath returns the path to the config file being used
-func GetConfigPath(env string) string {
-	configPaths := []string{
-		"./configs",
-		"../configs",
-		"../../configs",
-	}
-
-	for _, path := range configPaths {
-		configFile := filepath.Join(path, env+".yaml")
-		if _, err := os.Stat(configFile); err == nil {
-			return configFile
-		}
-	}
-
-	return filepath.Join("configs", env+".yaml")
-}
-
-// MustLoadConfig loads configuration and panics on error
+// MustLoadConfig loads configuration and panics on error (for compatibility)
 func MustLoadConfig() *Config {
 	config, err := LoadConfig()
 	if err != nil {
-		panic(fmt.Sprintf("failed to load configuration: %v", err))
+		panic("failed to load configuration: " + err.Error())
 	}
 	return config
 }
 
-// GetDSN returns the database connection string
-func (d *DatabaseConfig) GetDSN() string {
-	if d.Database == ":memory:" {
-		// SQLite in-memory database
-		return ":memory:"
-	}
-	if d.Host == "" {
-		// SQLite file database
-		return d.Database
-	}
-	// MySQL connection string
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
-		d.Username, d.Password, d.Host, d.Port, d.Database)
-}
-
-// IsMySQL returns true if this is a MySQL database configuration
-func (d *DatabaseConfig) IsMySQL() bool {
-	return d.Host != "" && d.Port > 0
-}
-
-// IsSQLite returns true if this is a SQLite database configuration
-func (d *DatabaseConfig) IsSQLite() bool {
-	return d.Host == "" || d.Database == ":memory:"
+// GetConfigPath returns a dummy path for compatibility
+func GetConfigPath(env string) string {
+	return "env-based-config"
 }

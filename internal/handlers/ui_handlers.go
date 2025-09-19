@@ -3,13 +3,16 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
 	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/pages"
+	"github.com/DuckDHD/BuyOrBye/internal/domain"
 	"github.com/DuckDHD/BuyOrBye/internal/logging"
+	"github.com/DuckDHD/BuyOrBye/internal/middleware"
 	"github.com/DuckDHD/BuyOrBye/internal/services"
 	"github.com/DuckDHD/BuyOrBye/internal/types"
 )
@@ -53,6 +56,27 @@ func (h *UIHandlers) LoginPage(c *gin.Context) {
 		},
 	}
 
+	// Handle error parameters from redirects
+	if errorParam := c.Query("error"); errorParam != "" {
+		var errorMsg string
+		switch errorParam {
+		case "invalid_data":
+			errorMsg = "Invalid form data. Please check your input and try again."
+		case "invalid_credentials":
+			errorMsg = "Invalid email or password. Please try again."
+		case "session_expired":
+			errorMsg = "Your session has expired. Please sign in again."
+		case "unauthorized":
+			errorMsg = "You need to sign in to access this page."
+		default:
+			errorMsg = "An error occurred during login. Please try again."
+		}
+
+		dto.Error = &types.ErrorResponseDTO{
+			Message: errorMsg,
+		}
+	}
+
 	if err := pages.LoginPage(dto).Render(c.Request.Context(), c.Writer); err != nil {
 		h.handleError(c, err, "Failed to render login page")
 		return
@@ -63,12 +87,29 @@ func (h *UIHandlers) LoginPage(c *gin.Context) {
 func (h *UIHandlers) RegisterPage(c *gin.Context) {
 	h.setCacheHeaders(c, false)
 
-	csrfToken := c.GetString("csrf_token")
+	csrfToken := c.GetString(middleware.CSRFContextKey)
 	dto := types.RegisterPageDTO{
 		Layout: types.LayoutDTO{
 			Title:     "Register",
 			CSRFToken: csrfToken,
 		},
+	}
+
+	// Handle error parameters from redirects
+	if errorParam := c.Query("error"); errorParam != "" {
+		var errorMsg string
+		switch errorParam {
+		case "invalid_data":
+			errorMsg = "Invalid form data. Please check your input and try again."
+		case "registration_failed":
+			errorMsg = "Registration failed. Please try again."
+		default:
+			errorMsg = "An error occurred during registration. Please try again."
+		}
+
+		dto.Error = &types.ErrorResponseDTO{
+			Message: errorMsg,
+		}
 	}
 
 	if err := pages.RegisterPage(dto).Render(c.Request.Context(), c.Writer); err != nil {
@@ -182,6 +223,21 @@ func (h *UIHandlers) DecisionHistoryPage(c *gin.Context) {
 	}
 }
 
+// ChatPage renders the chat landing page (GET /)
+func (h *UIHandlers) ChatPage(c *gin.Context) {
+	h.setCacheHeaders(c, false)
+
+	user := h.getCurrentUserDTO(c)
+	csrfToken := c.GetString("csrf_token")
+
+	dto := types.NewChatPageDTO(csrfToken, user)
+
+	if err := pages.ChatPage(dto).Render(c.Request.Context(), c.Writer); err != nil {
+		h.handleError(c, err, "Failed to render chat page")
+		return
+	}
+}
+
 // ================================
 // PARTIAL HANDLERS - Fragment rendering for HTMX (no layouts)
 // ================================
@@ -273,11 +329,36 @@ func (h *UIHandlers) DecisionFilterPartial(c *gin.Context) {
 
 // LoginAction handles login form submission (POST /auth/login)
 func (h *UIHandlers) LoginAction(c *gin.Context) {
+	logger := logging.ContextLogger(c).With(logging.WithOperation("login_action"))
+
+	// Parse form data for debugging
+	c.Request.ParseForm()
+	logger.Info("Login form data received",
+		zap.Any("form_values", c.Request.Form),
+		zap.String("content_type", c.ContentType()))
+
 	var request types.LoginRequestDTO
 
 	if err := c.ShouldBind(&request); err != nil {
-		// Redirect back to login page with error
-		c.Redirect(http.StatusSeeOther, "/auth/login?error=invalid_data")
+		logger.Warn("Login form binding failed",
+			logging.WithError(err),
+			zap.Any("raw_form", c.Request.Form))
+		h.handleLoginError(c, "Invalid form data. Please check your input and try again.")
+		return
+	}
+
+	// Log bound request for debugging
+	logger.Info("Login form bound successfully",
+		zap.String("email", request.Email),
+		zap.Int("password_length", len(request.Password)))
+
+	// Basic validation
+	if strings.TrimSpace(request.Email) == "" {
+		h.handleLoginError(c, "Email address is required.")
+		return
+	}
+	if request.Password == "" {
+		h.handleLoginError(c, "Password is required.")
 		return
 	}
 
@@ -285,28 +366,98 @@ func (h *UIHandlers) LoginAction(c *gin.Context) {
 	credentials := request.ToDomain()
 
 	// Call auth service to authenticate with domain object
+	logger.Info("Attempting user login", logging.WithUserID(request.Email))
 	tokenPair, err := h.authService.Login(c.Request.Context(), credentials)
 	if err != nil {
-		// Redirect back to login page with error
-		c.Redirect(http.StatusSeeOther, "/auth/login?error=invalid_credentials")
+		logger.Error("Login failed", logging.WithUserID(request.Email), logging.WithError(err))
+		h.handleLoginError(c, "Invalid email or password. Please try again.")
 		return
 	}
 
 	// Set authentication cookies/session
-	// TODO: Implement session management with tokenPair
-	_ = tokenPair
+	h.setAuthCookies(c, tokenPair)
 
-	// Redirect to dashboard on success
-	c.Redirect(http.StatusSeeOther, "/dashboard")
+	logger.Info("Login successful", logging.WithUserID(request.Email))
+
+	// Handle success differently for HTMX vs regular form submissions
+	if h.isHTMXRequest(c) {
+		// For HTMX requests, return success partial or redirect header
+		c.Header("HX-Redirect", "/dashboard")
+		c.Status(http.StatusOK)
+		c.String(http.StatusOK, `<div class="rounded-md bg-green-50 dark:bg-green-900/20 p-4 border border-green-200 dark:border-green-800">
+			<div class="flex">
+				<div class="flex-shrink-0">
+					<svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.53L8.53 10.53a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/>
+					</svg>
+				</div>
+				<div class="ml-3">
+					<h3 class="text-sm font-medium text-green-800 dark:text-green-200">Login successful!</h3>
+					<div class="mt-2 text-sm text-green-700 dark:text-green-300">
+						Redirecting to dashboard...
+					</div>
+				</div>
+			</div>
+		</div>`)
+	} else {
+		// Regular redirect for non-HTMX requests
+		c.Redirect(http.StatusSeeOther, "/dashboard")
+	}
 }
 
 // RegisterAction handles registration form submission (POST /auth/register)
 func (h *UIHandlers) RegisterAction(c *gin.Context) {
+	logger := logging.ContextLogger(c).With(logging.WithOperation("register_action"))
+
+	// Parse form data for debugging
+	c.Request.ParseForm()
+	logger.Info("Registration form data received",
+		zap.Any("form_values", c.Request.Form),
+		zap.String("content_type", c.ContentType()))
+
 	var request types.RegisterRequestDTO
 
 	if err := c.ShouldBind(&request); err != nil {
-		// Redirect back to register page with error
-		c.Redirect(http.StatusSeeOther, "/auth/register?error=invalid_data")
+		logger.Warn("Registration form binding failed",
+			logging.WithError(err),
+			zap.Any("raw_form", c.Request.Form))
+		h.handleRegistrationError(c, "Invalid form data. Please check your input and try again.")
+		return
+	}
+
+	// Log bound request for debugging
+	logger.Info("Registration form bound successfully",
+		zap.String("name", request.Name),
+		zap.String("email", request.Email),
+		zap.Int("password_length", len(request.Password)))
+
+	// Validate request fields
+	if strings.TrimSpace(request.Name) == "" {
+		h.handleRegistrationError(c, "Full name is required.")
+		return
+	}
+	if strings.TrimSpace(request.Email) == "" {
+		h.handleRegistrationError(c, "Email address is required.")
+		return
+	}
+	if request.Password == "" {
+		h.handleRegistrationError(c, "Password is required.")
+		return
+	}
+	if len(request.Password) < 8 {
+		h.handleRegistrationError(c, "Password must be at least 8 characters long.")
+		return
+	}
+	if request.ConfirmPassword == "" {
+		h.handleRegistrationError(c, "Password confirmation is required.")
+		return
+	}
+	if request.Password != request.ConfirmPassword {
+		h.handleRegistrationError(c, "Passwords do not match. Please ensure both password fields are identical.")
+		return
+	}
+	if request.Terms == "" {
+		h.handleRegistrationError(c, "You must accept the terms and conditions to register.")
 		return
 	}
 
@@ -314,19 +465,55 @@ func (h *UIHandlers) RegisterAction(c *gin.Context) {
 	user := request.ToDomain()
 
 	// Call auth service to register with domain object and password
+	logger.Info("Attempting user registration", logging.WithUserID(request.Email))
 	tokenPair, err := h.authService.Register(c.Request.Context(), user, request.Password)
 	if err != nil {
-		// Redirect back to register page with error
-		c.Redirect(http.StatusSeeOther, "/auth/register?error=registration_failed")
+		logger.Error("Registration failed", logging.WithUserID(request.Email), logging.WithError(err))
+
+		// Handle specific registration errors
+		errMsg := err.Error()
+		switch {
+		case strings.Contains(errMsg, "already exists"):
+			h.handleRegistrationError(c, "An account with this email address already exists. Please use a different email or try logging in.")
+		case strings.Contains(errMsg, "invalid email"):
+			h.handleRegistrationError(c, "Please enter a valid email address.")
+		case strings.Contains(errMsg, "weak password"):
+			h.handleRegistrationError(c, "Password is too weak. Please use a stronger password with uppercase, lowercase, numbers, and special characters.")
+		default:
+			h.handleRegistrationError(c, "Registration failed due to a server error. Please try again later.")
+		}
 		return
 	}
 
 	// Set authentication cookies/session
-	// TODO: Implement session management with tokenPair
-	_ = tokenPair
+	h.setAuthCookies(c, tokenPair)
 
-	// Redirect to dashboard on success
-	c.Redirect(http.StatusSeeOther, "/dashboard")
+	logger.Info("Registration successful", logging.WithUserID(request.Email))
+
+	// Handle success differently for HTMX vs regular form submissions
+	if h.isHTMXRequest(c) {
+		// For HTMX requests, return success partial or redirect header
+		c.Header("HX-Redirect", "/dashboard")
+		c.Status(http.StatusOK)
+		c.String(http.StatusOK, `<div class="rounded-md bg-green-50 dark:bg-green-900/20 p-4 border border-green-200 dark:border-green-800">
+			<div class="flex">
+				<div class="flex-shrink-0">
+					<svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.53L8.53 10.53a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/>
+					</svg>
+				</div>
+				<div class="ml-3">
+					<h3 class="text-sm font-medium text-green-800 dark:text-green-200">Registration successful!</h3>
+					<div class="mt-2 text-sm text-green-700 dark:text-green-300">
+						Your account has been created. Redirecting to dashboard...
+					</div>
+				</div>
+			</div>
+		</div>`)
+	} else {
+		// Regular redirect for non-HTMX requests
+		c.Redirect(http.StatusSeeOther, "/dashboard")
+	}
 }
 
 // LogoutAction handles logout form submission (POST /auth/logout)
@@ -493,9 +680,9 @@ func (h *UIHandlers) getCurrentUserDTO(c *gin.Context) *types.UserResponseDTO {
 
 	// TODO: Get user details from auth service
 	return &types.UserResponseDTO{
-		ID:    userID,
-		Email: "user@example.com", // Placeholder
-		Name:  "User",             // Placeholder
+		ID:       userID,
+		Email:    "user@example.com", // Placeholder
+		Name:     "User",             // Placeholder
 		IsActive: true,
 	}
 }
@@ -542,4 +729,85 @@ func (h *UIHandlers) convertRiskDataToDTO(risk interface{}) interface{} {
 func (h *UIHandlers) convertPolicyToDTO(policy interface{}) interface{} {
 	// TODO: Implement actual conversion when health domain is finalized
 	return policy
+}
+
+// handleLoginError handles login errors for both HTMX and regular requests
+func (h *UIHandlers) handleLoginError(c *gin.Context, message string) {
+	if h.isHTMXRequest(c) {
+		// For HTMX requests, return error HTML fragment
+		errorHTML := `<div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4 border border-red-200 dark:border-red-800">
+			<div class="flex">
+				<div class="flex-shrink-0">
+					<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/>
+					</svg>
+				</div>
+				<div class="ml-3">
+					<h3 class="text-sm font-medium text-red-800 dark:text-red-200">Login failed</h3>
+					<div class="mt-2 text-sm text-red-700 dark:text-red-300">` + message + `</div>
+				</div>
+			</div>
+		</div>`
+
+		c.Header("Content-Type", "text/html")
+		c.String(http.StatusBadRequest, errorHTML)
+	} else {
+		// For regular requests, redirect with error parameter
+		c.Redirect(http.StatusSeeOther, "/auth/login?error=invalid_credentials")
+	}
+}
+
+// handleRegistrationError handles registration errors for both HTMX and regular requests
+func (h *UIHandlers) handleRegistrationError(c *gin.Context, message string) {
+	if h.isHTMXRequest(c) {
+		// For HTMX requests, return error HTML fragment
+		errorHTML := `<div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4 border border-red-200 dark:border-red-800">
+			<div class="flex">
+				<div class="flex-shrink-0">
+					<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/>
+					</svg>
+				</div>
+				<div class="ml-3">
+					<h3 class="text-sm font-medium text-red-800 dark:text-red-200">Registration failed</h3>
+					<div class="mt-2 text-sm text-red-700 dark:text-red-300">` + message + `</div>
+				</div>
+			</div>
+		</div>`
+
+		c.Header("Content-Type", "text/html")
+		c.String(http.StatusBadRequest, errorHTML)
+	} else {
+		// For regular requests, redirect with error parameter
+		c.Redirect(http.StatusSeeOther, "/auth/register?error=registration_failed")
+	}
+}
+
+// setAuthCookies sets secure HTTP-only cookies for authentication tokens
+func (h *UIHandlers) setAuthCookies(c *gin.Context, tokenPair *domain.TokenPair) {
+	if tokenPair == nil {
+		return
+	}
+
+	// Set access token cookie (1 hour)
+	c.SetCookie(
+		"access_token",      // name
+		tokenPair.AccessToken, // value
+		3600,               // maxAge (1 hour)
+		"/",                // path
+		"",                 // domain
+		false,              // secure (set true in production)
+		true,               // httpOnly
+	)
+
+	// Set refresh token cookie (7 days)
+	c.SetCookie(
+		"refresh_token",
+		tokenPair.RefreshToken,
+		604800,             // maxAge (7 days)
+		"/auth",            // path
+		"",                 // domain
+		false,              // secure
+		true,               // httpOnly
+	)
 }

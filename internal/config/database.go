@@ -6,7 +6,6 @@ import (
 
 	"github.com/DuckDHD/BuyOrBye/internal/models"
 	"gorm.io/driver/mysql"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -111,13 +110,7 @@ func (d *databaseService) Close() error {
 
 // setupDatabase initializes the database connection
 func setupDatabase(config *DatabaseConfig, logConfig *LoggingConfig) (*gorm.DB, error) {
-	var dialector gorm.Dialector
-
-	if config.IsMySQL() {
-		dialector = mysql.Open(config.GetDSN())
-	} else {
-		dialector = sqlite.Open(config.GetDSN())
-	}
+	dialector := mysql.Open(config.GetDSN())
 
 	// Configure GORM logger based on logging config
 	gormLogger := logger.Default
@@ -144,18 +137,16 @@ func setupDatabase(config *DatabaseConfig, logConfig *LoggingConfig) (*gorm.DB, 
 	}
 
 	// Configure connection pool for MySQL
-	if config.IsMySQL() {
-		sqlDB, err := db.DB()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get sql.DB: %w", err)
-		}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sql.DB: %w", err)
+	}
 
-		sqlDB.SetMaxIdleConns(config.MaxIdleConns)
-		sqlDB.SetMaxOpenConns(config.MaxOpenConns)
+	sqlDB.SetMaxIdleConns(config.MaxIdleConns)
+	sqlDB.SetMaxOpenConns(config.MaxOpenConns)
 
-		if config.ConnMaxLifetime > 0 {
-			sqlDB.SetConnMaxLifetime(config.ConnMaxLifetime)
-		}
+	if config.ConnMaxLifetime > 0 {
+		sqlDB.SetConnMaxLifetime(config.ConnMaxLifetime)
 	}
 
 	return db, nil

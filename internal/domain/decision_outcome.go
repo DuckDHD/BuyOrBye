@@ -31,9 +31,10 @@ type DecisionFactor struct {
 
 // Valid decision values
 var validDecisions = map[string]bool{
-	"BUY":  true,
-	"WAIT": true,
-	"BYE":  true,
+	"BUY":       true,
+	"WAIT":      true,
+	"BYE":       true,
+	"DON'T BUY": true,
 }
 
 // Valid factor categories

@@ -1,14 +1,15 @@
 {
-  "name": "BuyOrBye - Smart Purchase Decisions",
+  "name": "BuyOrBye - AI Purchase Assistant",
   "short_name": "BuyOrBye",
-  "description": "AI-powered purchase decision platform with financial health tracking",
+  "description": "Get instant AI advice on your purchase decisions. Make smarter buying choices with our intelligent assistant.",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
   "theme_color": "#3B82F6",
-  "background_color": "#F8FAFC",
+  "orientation": "portrait-primary",
   "scope": "/",
-  "categories": ["finance", "lifestyle", "productivity"],
+  "lang": "en-US",
+  "categories": ["shopping", "lifestyle", "finance", "productivity"],
   "icons": [
     {
       "src": "/static/images/icon-72x72.png",
@@ -59,45 +60,36 @@
       "purpose": "any maskable"
     }
   ],
+  "screenshots": [
+    {
+      "src": "/static/screenshots/mobile-chat.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "platform": "narrow",
+      "label": "Chat interface on mobile"
+    },
+    {
+      "src": "/static/screenshots/desktop-chat.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Chat interface on desktop"
+    }
+  ],
   "shortcuts": [
     {
       "name": "New Decision",
       "short_name": "Decide",
-      "description": "Get AI-powered purchase advice",
-      "url": "/decisions/new",
+      "description": "Start a new purchase decision chat",
+      "url": "/",
       "icons": [
         {
           "src": "/static/images/shortcut-decision.png",
           "sizes": "96x96"
         }
       ]
-    },
-    {
-      "name": "Finance Overview",
-      "short_name": "Finance",
-      "description": "View your financial dashboard",
-      "url": "/finance",
-      "icons": [
-        {
-          "src": "/static/images/shortcut-finance.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Health Profile",
-      "short_name": "Health",
-      "description": "Manage your health information",
-      "url": "/health",
-      "icons": [
-        {
-          "src": "/static/images/shortcut-health.png",
-          "sizes": "96x96"
-        }
-      ]
     }
   ],
   "prefer_related_applications": false,
-  "lang": "en-US",
-  "dir": "ltr"
+  "display_override": ["window-controls-overlay", "standalone", "browser"]
 }

@@ -7,8 +7,8 @@ Request LoginRequestDTO dto
 User authentication request with email and password credentials
 */
 type LoginRequestDTO struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
+	Email    string `json:"email" form:"email" validate:"required,email"`
+	Password string `json:"password" form:"password" validate:"required,min=8"`
 }
 
 // ToDomain converts LoginRequestDTO to domain.Credentials
@@ -24,9 +24,11 @@ Request RegisterRequestDTO dto
 New user registration request with email, name, and password
 */
 type RegisterRequestDTO struct {
-	Email    string `json:"email" validate:"required,email"`
-	Name     string `json:"name" validate:"required,min=1"`
-	Password string `json:"password" validate:"required,min=8"`
+	Email           string `json:"email" form:"email" validate:"required,email"`
+	Name            string `json:"name" form:"name" validate:"required,min=1"`
+	Password        string `json:"password" form:"password" validate:"required,min=8"`
+	ConfirmPassword string `json:"confirm_password" form:"confirm_password" validate:"required"`
+	Terms           string `json:"terms" form:"terms" validate:"required"`
 }
 
 // ToDomain converts RegisterRequestDTO to domain.User

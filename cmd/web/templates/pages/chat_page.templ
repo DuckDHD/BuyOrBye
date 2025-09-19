@@ -1,0 +1,207 @@
+package pages
+
+import (
+	"github.com/DuckDHD/BuyOrBye/internal/types"
+	"github.com/DuckDHD/BuyOrBye/cmd/web/templates/layouts"
+)
+
+templ ChatPage(dto types.ChatPageDTO) {
+	@layouts.Base("BuyOrBye - AI Purchase Decision Assistant", dto.CSRFToken) {
+		<!-- Critical CSS for instant loading -->
+		<style>
+			.chat-container { height: 100vh; display: flex; flex-direction: column; }
+			.messages-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+			.input-area { flex-shrink: 0; }
+			.typing-indicator { opacity: 0.7; font-style: italic; }
+			@media (max-width: 640px) {
+				.chat-container { height: -webkit-fill-available; }
+			}
+		</style>
+
+		<!-- Enhanced mobile-optimized CSS -->
+		<link href="/static/css/chat.css" rel="stylesheet"/>
+		<link href="/static/css/structured-chat.css" rel="stylesheet"/>
+
+		<!-- PWA support -->
+		<link rel="manifest" href="/static/manifest.json"/>
+		<meta name="theme-color" content="#3B82F6"/>
+		<meta name="apple-mobile-web-app-capable" content="yes"/>
+		<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+		<meta name="apple-mobile-web-app-title" content="BuyOrBye"/>
+
+		<!-- Preload key resources -->
+		<link rel="preload" href="/static/js/chat.js" as="script"/>
+		<link rel="preload" href="/static/js/structured-chat.js" as="script"/>
+		<link rel="preload" href="/static/js/offline.js" as="script"/>
+
+		<div id="app" class="chat-container max-w-4xl mx-auto bg-white dark:bg-gray-800 shadow-lg">
+			<!-- Minimal Header -->
+			<header class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+				<div class="flex items-center space-x-2">
+					<div class="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+						<span class="text-white font-bold text-sm">B</span>
+					</div>
+					<h1 class="text-lg font-semibold text-gray-900 dark:text-white">BuyOrBye</h1>
+				</div>
+
+				<!-- Mode Toggle & Account status -->
+				<div class="flex items-center gap-4">
+					<div class="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+						<button id="quick-mode-btn" class="px-3 py-1 text-sm rounded-md transition-colors bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm">
+							Quick Chat
+						</button>
+						<button id="structured-mode-btn" class="px-3 py-1 text-sm rounded-md transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+							Guided Analysis
+						</button>
+					</div>
+
+					<div id="account-status" class="text-sm">
+						<button id="account-btn" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 transition-colors">
+							Sign in
+						</button>
+					</div>
+				</div>
+			</header>
+
+			<!-- Main Content Area -->
+			<div class="messages-area flex-1 overflow-y-auto">
+				<!-- Quick Chat Mode -->
+				<div id="quick-chat-container" class="p-4 space-y-3">
+					<!-- Welcome Message -->
+					<div class="flex items-start space-x-3">
+						<div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+							<span class="text-blue-600 dark:text-blue-400 text-sm">🤖</span>
+						</div>
+						<div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg rounded-tl-none max-w-xs sm:max-w-sm">
+							<p class="text-gray-800 dark:text-gray-200">
+								Hi! I'm your AI purchase advisor. Choose your experience:
+							</p>
+							<div class="mt-3 space-y-2">
+								<button class="quick-starter bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-600 w-full text-left transition-colors">
+									"Should I buy a $300 coffee machine?"
+								</button>
+								<button class="quick-starter bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-600 w-full text-left transition-colors">
+									"I'm thinking about upgrading my phone..."
+								</button>
+								<button id="start-structured-flow" class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-2 rounded-lg text-sm hover:from-blue-700 hover:to-purple-700 w-full text-left transition-colors">
+									📊 Start Guided Analysis (Recommended)
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Structured Chat Mode -->
+				<div id="structured-chat-container" class="hidden p-4">
+					<!-- This will be populated by structured-chat.js -->
+				</div>
+			</div>
+
+			<!-- Input Area -->
+			<div class="input-area border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+				<form id="chat-form" class="flex gap-2">
+					<div class="flex-1 relative">
+						<input
+							type="text"
+							id="user-input"
+							placeholder="Describe what you're thinking of buying..."
+							class="w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-base"
+							autofocus
+							autocomplete="off"
+							maxlength="500"
+						/>
+						<!-- Character count for longer messages -->
+						<div id="char-count" class="absolute right-3 top-3 text-xs text-gray-400 hidden"></div>
+					</div>
+					<button
+						type="submit"
+						id="send-btn"
+						class="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[60px] transition-colors"
+					>
+						<span class="send-text">Send</span>
+						<div class="send-loading hidden">
+							<div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+						</div>
+					</button>
+				</form>
+			</div>
+		</div>
+
+		<!-- Account Creation Modal -->
+		<div id="account-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+			<div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+				<h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Save Your Decisions</h3>
+				<p class="text-gray-600 dark:text-gray-300 mb-4">
+					Create a free account to keep your decision history and get personalized recommendations.
+				</p>
+
+				<form id="account-form" class="space-y-4">
+					<input type="text" id="account-name" placeholder="Your name" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white" required/>
+					<input type="email" id="account-email" placeholder="Email" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white" required/>
+					<input type="password" id="account-password" placeholder="Password (8+ characters)" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white" required minlength="8"/>
+
+					<div class="flex gap-2">
+						<button type="submit" class="flex-1 bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-colors">
+							Create Account
+						</button>
+						<button type="button" onclick="closeAccountModal()" class="px-4 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors">
+							Later
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+
+		<!-- Enhanced chat JavaScript -->
+		<script src="/static/js/offline.js"></script>
+		<script src="/static/js/chat.js"></script>
+		<script src="/static/js/structured-chat.js"></script>
+
+		<!-- Mode switching JavaScript -->
+		<script>
+			document.addEventListener('DOMContentLoaded', function() {
+				const quickModeBtn = document.getElementById('quick-mode-btn');
+				const structuredModeBtn = document.getElementById('structured-mode-btn');
+				const quickChatContainer = document.getElementById('quick-chat-container');
+				const structuredChatContainer = document.getElementById('structured-chat-container');
+				const inputArea = document.querySelector('.input-area');
+				const startStructuredBtn = document.getElementById('start-structured-flow');
+
+				// Mode switching
+				function switchToQuickMode() {
+					quickModeBtn.classList.add('bg-white', 'dark:bg-gray-600', 'text-gray-900', 'dark:text-white', 'shadow-sm');
+					quickModeBtn.classList.remove('text-gray-600', 'dark:text-gray-400');
+
+					structuredModeBtn.classList.remove('bg-white', 'dark:bg-gray-600', 'text-gray-900', 'dark:text-white', 'shadow-sm');
+					structuredModeBtn.classList.add('text-gray-600', 'dark:text-gray-400');
+
+					quickChatContainer.classList.remove('hidden');
+					structuredChatContainer.classList.add('hidden');
+					inputArea.classList.remove('hidden');
+				}
+
+				function switchToStructuredMode() {
+					structuredModeBtn.classList.add('bg-white', 'dark:bg-gray-600', 'text-gray-900', 'dark:text-white', 'shadow-sm');
+					structuredModeBtn.classList.remove('text-gray-600', 'dark:text-gray-400');
+
+					quickModeBtn.classList.remove('bg-white', 'dark:bg-gray-600', 'text-gray-900', 'dark:text-white', 'shadow-sm');
+					quickModeBtn.classList.add('text-gray-600', 'dark:text-gray-400');
+
+					quickChatContainer.classList.add('hidden');
+					structuredChatContainer.classList.remove('hidden');
+					inputArea.classList.add('hidden');
+
+					// Initialize structured chat if not already done
+					if (window.structuredChatFlow) {
+						window.structuredChatFlow.showStep1();
+					}
+				}
+
+				// Event listeners
+				quickModeBtn.addEventListener('click', switchToQuickMode);
+				structuredModeBtn.addEventListener('click', switchToStructuredMode);
+				startStructuredBtn.addEventListener('click', switchToStructuredMode);
+			});
+		</script>
+	}
+}

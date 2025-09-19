@@ -34,13 +34,13 @@ func (r *tokenRepository) SaveRefreshToken(ctx context.Context, userID, token st
 		return fmt.Errorf("token cannot be empty: %w", domain.ErrInvalidUserData)
 	}
 
-	// Verify user exists
-	var userModel models.UserModel
-	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&userModel).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("user with ID %s not found: %w", userID, domain.ErrUserNotFound)
-		}
+	// Verify user exists using count to avoid time column scanning issues
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&models.UserModel{}).Where("id = ? AND deleted_at IS NULL", userID).Count(&count).Error; err != nil {
 		return fmt.Errorf("failed to verify user existence: %w", err)
+	}
+	if count == 0 {
+		return fmt.Errorf("user with ID %s not found: %w", userID, domain.ErrUserNotFound)
 	}
 
 	// Start transaction to ensure atomicity

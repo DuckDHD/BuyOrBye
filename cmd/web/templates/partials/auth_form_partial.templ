@@ -66,10 +66,10 @@ templ EmailInput(id, name, placeholder, value string, required bool) {
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
 				</svg>
 			</div>
-			<input 
+			<input
 				id={ id }
 				name={ name }
-				type="email" 
+				type="email"
 				autocomplete="email"
 				if required {
 					required
@@ -77,10 +77,6 @@ templ EmailInput(id, name, placeholder, value string, required bool) {
 				class="appearance-none rounded-lg relative block w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
 				placeholder={ placeholder }
 				value={ value }
-				hx-trigger="blur"
-				hx-post="/auth/validate-email"
-				hx-target={ "#" + id + "-error" }
-				hx-swap="innerHTML"
 			/>
 		</div>
 		<div id={ id + "-error" } class="mt-1"></div>

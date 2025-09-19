@@ -32,29 +32,23 @@ func main() {
 
 	// Initialize logger with config
 	if err := logging.InitLogger(logging.LogConfig{
-		Environment: cfg.Logging.Environment,
-		Level:       cfg.Logging.Level,
+		Environment: cfg.App.Environment,
+		Level:       "info", // Default to info level
 	}); err != nil {
 		panic("Failed to initialize logger: " + err.Error())
 	}
 	logger := logging.GetLogger()
 	logger.Info("Configuration loaded successfully",
 		logging.WithComponent("main"),
-		zap.String("environment", cfg.Server.Environment),
-		zap.String("config_file", config.GetConfigPath(cfg.Server.Environment)))
+		zap.String("environment", cfg.App.Environment),
+		zap.String("config_source", "environment-variables"))
 
-	// Initialize database service with config
-	dbService, err := config.NewDatabaseService(&cfg.Database, &cfg.Logging)
+	// Initialize database service (restore original working setup)
+	dbService, err := database.NewGormService()
 	if err != nil {
 		logger.Fatal("Failed to initialize database", logging.WithError(err))
 	}
 	db := dbService.GetDB()
-
-	// Run migrations
-	if err := database.RunAllMigrations(db); err != nil {
-		logger.Fatal("Migration failed", logging.WithError(err))
-	}
-	logger.Info("Database migrations completed successfully", logging.WithComponent("main"))
 
 	// Initialize core services with config
 	passwordService := services.NewPasswordService()
@@ -111,6 +105,9 @@ func main() {
 	// UI handlers
 	uiHandlers := handlers.NewUIHandlers(authService, financeServiceInterface, healthService, decisionServiceInterface)
 
+	// Structured chat handler
+	structuredChatHandler := handlers.NewStructuredChatHandler()
+
 	// Middlewares
 	jwtAuthMiddleware := middleware.NewJWTAuthMiddleware(jwtService)
 
@@ -119,7 +116,7 @@ func main() {
 
 	// Global middleware
 	router.Use(middleware.CORS())
-	middlewareConfig := config.GetMiddlewareConfig(cfg.Server.Environment)
+	middlewareConfig := config.GetMiddlewareConfig(cfg.App.Environment)
 	loggingConfig := logging.HTTPLoggingConfig{
 		SkipPaths:       middlewareConfig.SkipPaths,
 		LogRequestBody:  middlewareConfig.LogRequestBody,
@@ -141,7 +138,7 @@ func main() {
 	})
 
 	// UI Routes (Frontend/Web Interface)
-	setupUIRoutes(router, uiHandlers, jwtAuthMiddleware)
+	setupUIRoutes(router, uiHandlers, jwtAuthMiddleware, structuredChatHandler)
 
 	// API routes
 	api := router.Group("/api/v1")
@@ -306,13 +303,13 @@ func main() {
 	}
 
 	// HTTP server
-	serverService := config.NewServerService(&cfg.Server)
+	serverService := config.NewServerService(cfg)
 	server := serverService.CreateServer(router)
 
 	logger.Info("Starting BuyOrBye server",
 		logging.WithComponent("main"),
 		zap.String("address", serverService.GetAddress()),
-		zap.String("environment", cfg.Server.Environment))
+		zap.String("environment", cfg.App.Environment))
 
 	// Graceful shutdown
 	done := make(chan bool, 1)
@@ -351,15 +348,17 @@ func setupUIRoutes(
 	router *gin.Engine,
 	uiHandlers *handlers.UIHandlers,
 	jwtAuthMiddleware *middleware.JWTAuthMiddleware,
+	structuredChatHandler *handlers.StructuredChatHandler,
 ) {
 	// Static assets with caching
 	router.Static("/static", "cmd/web/static")
 	router.StaticFile("/favicon.ico", "cmd/web/static/favicon.svg")
 	router.StaticFile("/manifest.json", "cmd/web/static/manifest.json")
 	router.StaticFile("/robots.txt", "cmd/web/static/robots.txt")
+	router.StaticFile("/sw.js", "cmd/web/static/sw.js")
 
 	// Public routes
-	router.GET("/", redirectToDashboard)
+	router.GET("/", uiHandlers.ChatPage)
 	router.GET("/auth/login", uiHandlers.LoginPage)
 	router.GET("/auth/register", uiHandlers.RegisterPage)
 
@@ -377,7 +376,7 @@ func setupUIRoutes(
 
 	// Protected routes
 	protected := router.Group("")
-	// protected.Use(jwtAuthMiddleware.RequireAuth())
+	protected.Use(jwtAuthMiddleware.RequireAuth())
 	{
 		// Pages
 		protected.GET("/dashboard", uiHandlers.DashboardPage)
@@ -422,12 +421,24 @@ func setupUIRoutes(
 
 		protected.POST("/decisions", uiHandlers.DecisionCreateAction)
 	}
+
+	// Structured Chat API Routes (for enhanced purchase decision flow)
+	structuredAPI := router.Group("/api/structured-chat")
+	{
+		structuredAPI.POST("/step", structuredChatHandler.ProcessStep)
+		structuredAPI.POST("/recommendation", structuredChatHandler.GenerateRecommendation)
+	}
+
+	// Additional API routes for decision saving
+	decisionAPI := router.Group("/api/decisions")
+	decisionAPI.Use(jwtAuthMiddleware.RequireAuth())
+	{
+		decisionAPI.POST("/save", func(c *gin.Context) {
+			c.JSON(200, gin.H{"message": "Decision saved successfully"})
+		})
+	}
 }
 
-// redirectToDashboard is a simple redirect helper for the root route
-func redirectToDashboard(c *gin.Context) {
-	c.Redirect(302, "/dashboard")
-}
 
 // ================================
 // MOCK DECISION SERVICE IMPLEMENTATION

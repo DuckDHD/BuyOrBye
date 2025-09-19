@@ -50,8 +50,6 @@ go.work
 
 # Common local DB files
 *.db
-*.sqlite
-*.sqlite3
 
 # ---------------------------------------
 # Node / Frontend

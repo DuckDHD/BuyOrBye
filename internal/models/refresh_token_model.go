@@ -10,13 +10,16 @@ import (
 // RefreshTokenModel represents the GORM model for refresh tokens table
 // This struct defines the database schema and should only be used in the repository layer
 type RefreshTokenModel struct {
-	gorm.Model
-	UserID    uint      `gorm:"not null;index"`
-	Token     string    `gorm:"type:varchar(255);uniqueIndex;not null"`
-	ExpiresAt time.Time `gorm:"not null"`
-	IsRevoked bool      `gorm:"default:false"`
-	RevokedAt *time.Time
-	User      UserModel `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE;"`
+	ID        uint           `gorm:"primaryKey" json:"id"`
+	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	UserID    uint           `gorm:"not null;index" json:"user_id"`
+	Token     string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"token"`
+	ExpiresAt time.Time      `gorm:"not null" json:"expires_at"`
+	IsRevoked bool           `gorm:"default:false" json:"is_revoked"`
+	RevokedAt *time.Time     `gorm:"default:null" json:"revoked_at,omitempty"`
+	User      UserModel      `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE;" json:"user,omitempty"`
 }
 
 // TableName returns the table name for GORM

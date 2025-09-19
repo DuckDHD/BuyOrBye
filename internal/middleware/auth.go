@@ -29,32 +29,28 @@ func NewJWTAuthMiddleware(jwtService services.JWTService) *JWTAuthMiddleware {
 // Returns 401 for invalid, expired, or missing tokens
 func (j *JWTAuthMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract token from Authorization header
+		// Try to get token from Authorization header first
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
-				http.StatusUnauthorized,
-				"unauthorized",
-				"Authorization header is required",
-			))
-			c.Abort()
-			return
+		var tokenString string
+
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			// Extract token from Bearer header
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+		} else {
+			// Fallback to cookie
+			token, err := c.Cookie("access_token")
+			if err != nil || token == "" {
+				c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+					http.StatusUnauthorized,
+					"unauthorized",
+					"Authorization header or access token cookie is required",
+				))
+				c.Abort()
+				return
+			}
+			tokenString = token
 		}
 
-		// Check Bearer token format
-		tokenParts := strings.Split(authHeader, " ")
-		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
-				http.StatusUnauthorized,
-				"unauthorized",
-				"Invalid authorization header format. Expected 'Bearer <token>'",
-			))
-			c.Abort()
-			return
-		}
-
-		// Extract the actual token
-		tokenString := tokenParts[1]
 		if tokenString == "" {
 			c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
 				http.StatusUnauthorized,
@@ -117,24 +113,24 @@ func (j *JWTAuthMiddleware) RequireAuth() gin.HandlerFunc {
 // If no token is present or token is invalid, it continues without claims
 func (j *JWTAuthMiddleware) OptionalAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract token from Authorization header
+		// Try to get token from Authorization header first
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			// No token provided, continue without authentication
-			c.Next()
-			return
+		var tokenString string
+
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			// Extract token from Bearer header
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+		} else {
+			// Fallback to cookie
+			token, err := c.Cookie("access_token")
+			if err != nil || token == "" {
+				// No token provided, continue without authentication
+				c.Next()
+				return
+			}
+			tokenString = token
 		}
 
-		// Check Bearer token format
-		tokenParts := strings.Split(authHeader, " ")
-		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-			// Invalid format, continue without authentication
-			c.Next()
-			return
-		}
-
-		// Extract the actual token
-		tokenString := tokenParts[1]
 		if tokenString == "" {
 			// Empty token, continue without authentication
 			c.Next()

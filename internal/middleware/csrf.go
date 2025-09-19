@@ -24,27 +24,46 @@ func generateCSRFToken() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
+func ensureCSRFCookie(c *gin.Context) (string, error) {
+	if cur, err := c.Cookie(CSRFCookieName); err == nil && cur != "" {
+		c.Set(CSRFContextKey, cur) // so templates can render it
+		return cur, nil
+	}
+	tok, err := generateCSRFToken()
+	if err != nil {
+		return "", err
+	}
+	secure := c.Request.TLS != nil // use true behind HTTPS/terminating proxy
+	httpOnly := true
+	c.SetCookie(CSRFCookieName, tok, 3600, "/", "", secure, httpOnly)
+	c.Set(CSRFContextKey, tok)
+	return tok, nil
+}
+
 func CSRFMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Check if state-changing method first
-		if isStateChangingMethod(c.Request.Method) {
-			if !validateCSRFToken(c) {
-				c.AbortWithStatus(http.StatusForbidden)
-				return
-			}
+		// Skip CSRF on static assets (prevents accidental rotations)
+		if strings.HasPrefix(c.Request.URL.Path, "/static/") ||
+			strings.HasPrefix(c.Request.URL.Path, "/favicon") {
+			c.Next()
+			return
 		}
 
-		// Generate token for all requests
-		token, err := generateCSRFToken()
-		if err != nil {
+		// Make sure there is a cookie token (but don't rotate if present)
+		if _, err := ensureCSRFCookie(c); err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
-		c.Set(CSRFContextKey, token)
-
-		secure := c.Request.TLS != nil
-		c.SetCookie(CSRFCookieName, token, 3600, "/", "", secure, true)
+		// Enforce only on state-changing requests
+		if isStateChangingMethod(c.Request.Method) {
+			if !validateCSRFToken(c) {
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+					"error": "CSRF token missing or invalid",
+				})
+				return
+			}
+		}
 
 		c.Next()
 	}

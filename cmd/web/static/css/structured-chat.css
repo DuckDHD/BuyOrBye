@@ -1,0 +1,694 @@
+/**
+ * Structured Chat Flow - Enhanced CSS Styles
+ * Provides cohesive styling for the step-by-step purchase decision flow
+ */
+
+/* ========================================
+   Step Container & Layout
+   ======================================== */
+
+.step-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    animation: slideInUp 0.5s ease-out;
+}
+
+.step-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.step-header h3 {
+    color: #1f2937;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+/* ========================================
+   Progress Indicator
+   ======================================== */
+
+.step-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.progress-bar {
+    width: 100%;
+    max-width: 300px;
+    height: 8px;
+    background-color: #e5e7eb;
+    border-radius: 9999px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    border-radius: 9999px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: progressShine 2s infinite;
+}
+
+.progress-text {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* ========================================
+   Form Styling
+   ======================================== */
+
+.structured-chat-form {
+    animation: fadeIn 0.4s ease-out;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.structured-input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 2px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #1f2937;
+    background-color: #ffffff;
+    transition: all 0.2s ease-in-out;
+}
+
+.structured-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    background-color: #fefefe;
+}
+
+.structured-input:hover:not(:focus) {
+    border-color: #9ca3af;
+}
+
+.structured-input.border-red-500 {
+    border-color: #ef4444;
+    background-color: #fef2f2;
+}
+
+.structured-input.border-red-500:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* ========================================
+   Radio Button Groups
+   ======================================== */
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: #ffffff;
+}
+
+.radio-option:hover {
+    border-color: #3b82f6;
+    background-color: #f8fafc;
+    transform: translateY(-1px);
+}
+
+.radio-option input[type="radio"] {
+    margin-right: 0.75rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    accent-color: #3b82f6;
+}
+
+.radio-option input[type="radio"]:checked + span {
+    color: #1d4ed8;
+    font-weight: 600;
+}
+
+.radio-option:has(input[type="radio"]:checked) {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+/* ========================================
+   Form Actions
+   ======================================== */
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+    border: none;
+    padding: 0.875rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-secondary {
+    background: #ffffff;
+    color: #374151;
+    border: 2px solid #d1d5db;
+    padding: 0.875rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-secondary:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+    transform: translateY(-1px);
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+}
+
+/* ========================================
+   Recommendation Results
+   ======================================== */
+
+.recommendation-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+    animation: slideInUp 0.6s ease-out;
+}
+
+.recommendation-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.recommendation-badge {
+    display: inline-block;
+    padding: 1rem 2rem;
+    border-radius: 9999px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+    animation: pulse 2s infinite;
+}
+
+.recommendation-badge.bg-green-500 {
+    background: linear-gradient(135deg, #10b981, #047857);
+    box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+}
+
+.recommendation-badge.bg-yellow-500 {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.4);
+}
+
+.recommendation-badge.bg-red-500 {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.4);
+}
+
+.recommendation-badge.bg-blue-500 {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+}
+
+.recommendation-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.recommendation-section {
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid;
+    transition: all 0.2s ease-in-out;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+.recommendation-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.recommendation-section h4 {
+    margin-bottom: 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.recommendation-section p {
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* ========================================
+   Summary Section
+   ======================================== */
+
+.summary-section .grid {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.summary-section .grid > div {
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+
+/* ========================================
+   Confidence Indicator
+   ======================================== */
+
+.confidence-indicator {
+    margin: 1.5rem 0;
+}
+
+.confidence-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #e5e7eb;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #059669);
+    border-radius: 9999px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========================================
+   Recommendation Actions
+   ======================================== */
+
+.recommendation-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* ========================================
+   Error and Success States
+   ======================================== */
+
+.field-error {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+#structured-chat-error,
+#structured-chat-success {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    z-index: 1000;
+    animation: slideInRight 0.3s ease-out;
+    max-width: 400px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+}
+
+#structured-chat-error {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+#structured-chat-success {
+    background: linear-gradient(135deg, #10b981, #047857);
+}
+
+/* ========================================
+   Loading States
+   ======================================== */
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ========================================
+   Animations
+   ======================================== */
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes progressShine {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.9;
+    }
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+
+@media (max-width: 768px) {
+    .step-container,
+    .recommendation-container {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+
+    .step-header h3 {
+        font-size: 1.25rem;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .radio-group {
+        gap: 0.5rem;
+    }
+
+    .radio-option {
+        padding: 0.875rem;
+    }
+
+    .recommendation-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .recommendation-badge {
+        font-size: 1rem;
+        padding: 0.75rem 1.5rem;
+    }
+
+    .summary-section .grid {
+        grid-template-columns: 1fr;
+    }
+
+    #structured-chat-error,
+    #structured-chat-success {
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        right: 1rem;
+        max-width: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .step-container,
+    .recommendation-container {
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+
+    .structured-input {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .progress-bar {
+        max-width: 200px;
+    }
+}
+
+/* ========================================
+   High Contrast Mode Support
+   ======================================== */
+
+@media (prefers-contrast: high) {
+    .structured-input {
+        border-width: 3px;
+    }
+
+    .recommendation-section {
+        border-width: 2px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        border-width: 2px;
+    }
+}
+
+/* ========================================
+   Reduced Motion Support
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .progress-fill::after {
+        animation: none;
+    }
+
+    .recommendation-badge {
+        animation: none;
+    }
+}
+
+/* ========================================
+   Dark Mode Support (if implemented)
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+    .step-container,
+    .recommendation-container {
+        background-color: #1f2937;
+        color: #f9fafb;
+    }
+
+    .step-header {
+        border-bottom-color: #374151;
+    }
+
+    .step-header h3 {
+        color: #f9fafb;
+    }
+
+    .structured-input {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f9fafb;
+    }
+
+    .structured-input:focus {
+        background-color: #374151;
+        border-color: #3b82f6;
+    }
+
+    .radio-option {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f9fafb;
+    }
+
+    .radio-option:hover {
+        background-color: #4b5563;
+    }
+
+    .btn-secondary {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f9fafb;
+    }
+
+    .btn-secondary:hover {
+        background-color: #4b5563;
+    }
+
+    .recommendation-section {
+        background-color: #374151;
+        border-color: #4b5563;
+    }
+}
+
+/* ========================================
+   Print Styles
+   ======================================== */
+
+@media print {
+    .step-container,
+    .recommendation-container {
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+
+    .form-actions,
+    .recommendation-actions {
+        display: none;
+    }
+
+    .recommendation-badge {
+        background: #000 !important;
+        color: #fff !important;
+    }
+
+    .progress-bar {
+        border: 1px solid #000;
+    }
+
+    .progress-fill {
+        background: #000 !important;
+    }
+}

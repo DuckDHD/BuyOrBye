@@ -89,10 +89,59 @@ func FromDomainUserListToCommon(users []domain.User) []UserDTO {
 	return dtos
 }
 
+/*
+Chat ChatPageDTO dto
+Chat page data transfer object for chat landing page
+*/
+type ChatPageDTO struct {
+	CSRFToken string           `json:"csrf_token"`
+	User      *UserResponseDTO `json:"user,omitempty"`
+}
+
+/*
+Chat ChatMessageDTO dto
+Chat message data transfer object for chat interactions
+*/
+type ChatMessageDTO struct {
+	Message   string `json:"message" binding:"required,max=500"`
+	SessionID string `json:"session_id,omitempty"`
+}
+
+/*
+Chat ChatResponseDTO dto
+Chat response data transfer object for AI responses
+*/
+type ChatResponseDTO struct {
+	Response  string          `json:"response"`
+	Status    string          `json:"status"` // processing, need_info, decision
+	Decision  *DecisionResult `json:"decision,omitempty"`
+	Questions []string        `json:"questions,omitempty"`
+	SessionID string          `json:"session_id"`
+}
+
+/*
+AI DecisionResult dto
+AI decision result data transfer object
+*/
+type DecisionResult struct {
+	Recommendation string  `json:"recommendation"` // buy, wait, bye
+	Confidence     float64 `json:"confidence"`
+	Reasoning      string  `json:"reasoning"`
+	WaitPeriod     *int    `json:"wait_period,omitempty"` // days
+}
+
 // NewLayoutDTO creates a new LayoutDTO with basic fields
 func NewLayoutDTO(title, csrfToken string, user *UserResponseDTO) LayoutDTO {
 	return LayoutDTO{
 		Title:     title,
+		CSRFToken: csrfToken,
+		User:      user,
+	}
+}
+
+// NewChatPageDTO creates a new ChatPageDTO
+func NewChatPageDTO(csrfToken string, user *UserResponseDTO) ChatPageDTO {
+	return ChatPageDTO{
 		CSRFToken: csrfToken,
 		User:      user,
 	}

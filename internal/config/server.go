@@ -11,55 +11,69 @@ import (
 type ServerService interface {
 	// CreateServer creates an HTTP server with the configured settings
 	CreateServer(handler http.Handler) *http.Server
-	
+
 	// GetAddress returns the server listen address
 	GetAddress() string
-	
+
 	// IsProduction returns true if running in production environment
 	IsProduction() bool
-	
-	// IsDevelopment returns true if running in development environment  
+
+	// IsDevelopment returns true if running in development environment
 	IsDevelopment() bool
-	
+
 	// IsTest returns true if running in test environment
 	IsTest() bool
 }
 
-// NewServerService creates a new server service from configuration
-func NewServerService(config *ServerConfig) ServerService {
+// NewServerService creates a new server service from full configuration
+func NewServerService(config *Config) ServerService {
 	return &serverService{
-		config: config,
+		serverConfig: &config.Server,
+		appConfig:    &config.App,
 	}
 }
 
+// NewServerServiceFromConfig creates server service from server config only (for compatibility)
+func NewServerServiceFromConfig(serverConfig *ServerConfig) ServerService {
+	cfg := &Config{
+		Server: *serverConfig,
+		App: AppConfig{
+			Environment: "development", // Default fallback
+		},
+	}
+	return NewServerService(cfg)
+}
+
 type serverService struct {
-	config *ServerConfig
+	serverConfig *ServerConfig
+	appConfig    *AppConfig
 }
 
 func (s *serverService) CreateServer(handler http.Handler) *http.Server {
+	readTimeout, writeTimeout, idleTimeout := GetTimeoutConfig(s.appConfig.Environment)
 	return &http.Server{
 		Addr:         s.GetAddress(),
 		Handler:      handler,
-		ReadTimeout:  s.config.ReadTimeout,
-		WriteTimeout: s.config.WriteTimeout,
-		IdleTimeout:  s.config.IdleTimeout,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 }
 
 func (s *serverService) GetAddress() string {
-	return fmt.Sprintf(":%d", s.config.Port)
+	return fmt.Sprintf(":%d", s.serverConfig.Port)
 }
 
 func (s *serverService) IsProduction() bool {
-	return s.config.Environment == "production"
+	return s.appConfig.Environment == "production"
 }
 
 func (s *serverService) IsDevelopment() bool {
-	return s.config.Environment == "development"
+	return s.appConfig.Environment == "development"
 }
 
 func (s *serverService) IsTest() bool {
-	return s.config.Environment == "test"
+	return s.appConfig.Environment == "test"
 }
 
 // GetPort returns the configured server port, with fallback to environment
@@ -67,14 +81,14 @@ func GetPort(config *ServerConfig) int {
 	if config.Port > 0 {
 		return config.Port
 	}
-	
+
 	// Fallback to environment variable
-	if portStr := getEnvWithDefault("PORT", "8080"); portStr != "" {
+	if portStr := getEnv("PORT", "8080"); portStr != "" {
 		if port, err := strconv.Atoi(portStr); err == nil {
 			return port
 		}
 	}
-	
+
 	return 8080
 }
 
@@ -95,32 +109,25 @@ func ValidateServerConfig(config *ServerConfig) error {
 	if config.Port <= 0 || config.Port > 65535 {
 		return fmt.Errorf("invalid port: %d (must be between 1 and 65535)", config.Port)
 	}
-	
+
+	return nil
+}
+
+// ValidateAppConfig validates app configuration
+func ValidateAppConfig(config *AppConfig) error {
 	if config.Environment == "" {
 		return fmt.Errorf("environment cannot be empty")
 	}
-	
+
 	validEnvironments := map[string]bool{
 		"development": true,
 		"production":  true,
-		"test":       true,
+		"test":        true,
 	}
-	
+
 	if !validEnvironments[config.Environment] {
 		return fmt.Errorf("invalid environment: %s (must be one of: development, production, test)", config.Environment)
 	}
-	
-	if config.ReadTimeout <= 0 {
-		return fmt.Errorf("read timeout must be positive")
-	}
-	
-	if config.WriteTimeout <= 0 {
-		return fmt.Errorf("write timeout must be positive")
-	}
-	
-	if config.IdleTimeout <= 0 {
-		return fmt.Errorf("idle timeout must be positive")
-	}
-	
+
 	return nil
 }

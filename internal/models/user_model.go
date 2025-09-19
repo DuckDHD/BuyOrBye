@@ -11,12 +11,15 @@ import (
 // UserModel represents the GORM model for users table
 // This struct defines the database schema and should only be used in the repository layer
 type UserModel struct {
-	gorm.Model
-	Email        string     `gorm:"type:varchar(191);uniqueIndex;not null"`
-	Name         string     `gorm:"type:varchar(255);not null"`
-	PasswordHash string     `gorm:"type:varchar(255);not null"`
-	IsActive     bool       `gorm:"default:true"`
-	LastLoginAt  *time.Time `gorm:"default:null"`
+	ID           uint           `gorm:"primaryKey" json:"id"`
+	CreatedAt    time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt    time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	Email        string         `gorm:"type:varchar(191);uniqueIndex;not null" json:"email"`
+	Name         string         `gorm:"type:varchar(255);not null" json:"name"`
+	PasswordHash string         `gorm:"type:varchar(255);not null" json:"password_hash"`
+	IsActive     bool           `gorm:"default:true" json:"is_active"`
+	LastLoginAt  *time.Time     `gorm:"default:null" json:"last_login_at,omitempty"`
 }
 
 // TableName returns the table name for GORM

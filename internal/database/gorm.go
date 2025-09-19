@@ -2,13 +2,13 @@ package database
 
 import (
 	"fmt"
-	"os"
+	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"github.com/DuckDHD/BuyOrBye/internal/models"
+	"github.com/DuckDHD/BuyOrBye/internal/config"
 )
 
 // GormService provides GORM database functionality
@@ -16,51 +16,63 @@ type GormService struct {
 	db *gorm.DB
 }
 
-// NewGormService creates a new GORM database service
+// NewGormService creates a new GORM database service using config
 func NewGormService() (*GormService, error) {
-	// Get database configuration from environment
-	dbname := os.Getenv("BLUEPRINT_DB_DATABASE")
-	password := os.Getenv("BLUEPRINT_DB_PASSWORD")
-	username := os.Getenv("BLUEPRINT_DB_USERNAME")
-	port := os.Getenv("BLUEPRINT_DB_PORT")
-	host := os.Getenv("BLUEPRINT_DB_HOST")
+	// Load configuration from environment variables
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
 
-	// Build MySQL DSN
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		username, password, host, port, dbname)
+	db, err := SetupDatabase(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup database: %w", err)
+	}
+
+	// Run all migrations (includes core and health domains)
+	if err := RunAllMigrations(db); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	return &GormService{db: db}, nil
+}
+
+// SetupDatabase initializes the database connection using configuration
+func SetupDatabase(cfg *config.Config) (*gorm.DB, error) {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		cfg.Database.Username,
+		cfg.Database.Password,
+		cfg.Database.Host,
+		cfg.Database.Port,
+		cfg.Database.Database,
+	)
 
 	// Configure GORM logger based on environment
 	logLevel := logger.Info
-	if os.Getenv("APP_ENV") == "production" {
+	if cfg.App.Environment == "production" {
 		logLevel = logger.Warn
 	}
 
-	// Open GORM connection
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logLevel),
+		NowFunc: func() time.Time {
+			return time.Now().UTC()
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Auto-migrate the schema for all models
-	if err := db.AutoMigrate(
-		&models.UserModel{},
-		&models.RefreshTokenModel{},
-		&models.ExpenseModel{},
-		&models.IncomeModel{},
-		&models.LoanModel{},
-		&models.FinanceSummaryModel{},
-	); err != nil {
-		return nil, fmt.Errorf("failed to migrate database schema: %w", err)
-	}
-	
-	// Run health domain migrations
-	if err := RunHealthMigrations(db); err != nil {
-		return nil, fmt.Errorf("failed to migrate health schema: %w", err)
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
 	}
 
-	return &GormService{db: db}, nil
+	sqlDB.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+	sqlDB.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+	sqlDB.SetConnMaxLifetime(time.Duration(cfg.Database.ConnMaxLifetime) * time.Second)
+
+	return db, nil
 }
 
 // GetDB returns the GORM database instance

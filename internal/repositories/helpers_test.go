@@ -19,7 +19,7 @@ func TestIsDuplicateKeyError(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "SQLite UNIQUE constraint error",
+			name:     "MySQL UNIQUE constraint error",
 			err:      errors.New("UNIQUE constraint failed: users.email"),
 			expected: true,
 		},

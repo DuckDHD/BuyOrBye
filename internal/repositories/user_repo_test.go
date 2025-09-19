@@ -9,15 +9,15 @@ import (
 	"github.com/DuckDHD/BuyOrBye/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
-// setupTestDB creates an in-memory SQLite database for testing
+// setupTestDB creates a MySQL database for testing
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open("root:@tcp(localhost:3306)/buyorbye_test?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{})
 	require.NoError(t, err, "Failed to connect to test database")
 
 	// Auto-migrate the tables

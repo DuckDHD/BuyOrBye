@@ -85,7 +85,8 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	}
 
 	var userModel models.UserModel
-	if err := r.db.WithContext(ctx).Where("email = ?", email).First(&userModel).Error; err != nil {
+	// Select specific columns to avoid time scanning issues
+	if err := r.db.WithContext(ctx).Select("id, email, name, password_hash, is_active, created_at, updated_at").Where("email = ?", email).First(&userModel).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with email %s not found: %w", email, domain.ErrUserNotFound)
 		}
@@ -104,7 +105,8 @@ func (r *userRepository) GetByID(ctx context.Context, userID string) (*domain.Us
 	}
 
 	var userModel models.UserModel
-	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&userModel).Error; err != nil {
+	// Select specific columns to avoid time scanning issues
+	if err := r.db.WithContext(ctx).Select("id, email, name, password_hash, is_active, created_at, updated_at").Where("id = ?", userID).First(&userModel).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with ID %s not found: %w", userID, domain.ErrUserNotFound)
 		}

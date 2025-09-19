@@ -328,8 +328,8 @@ func (ts *TestServer) ResetDatabase(t *testing.T) {
 		"users",
 	}
 	
-	// Disable foreign key checks for SQLite
-	err := db.Exec("PRAGMA foreign_keys = OFF").Error
+	// Disable foreign key checks for MySQL
+	err := db.Exec("SET FOREIGN_KEY_CHECKS = 0").Error
 	require.NoError(t, err, "Failed to disable foreign key checks")
 	
 	// Clear all tables
@@ -345,7 +345,7 @@ func (ts *TestServer) ResetDatabase(t *testing.T) {
 	}
 	
 	// Re-enable foreign key checks
-	err = db.Exec("PRAGMA foreign_keys = ON").Error
+	err = db.Exec("SET FOREIGN_KEY_CHECKS = 1").Error
 	require.NoError(t, err, "Failed to re-enable foreign key checks")
 }
 
